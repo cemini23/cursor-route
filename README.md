@@ -103,28 +103,32 @@ Then say **`/route-orch`** or **spawn workers** in Cursor — the skill delegate
 
 Always-approve is **on** by default. Opt out: `--ask` or `CURSOR_ROUTE_ASK=1`.
 
-## DeepSeek setup
+## DeepSeek setup (the cheap mid-lane — this is the point)
 
-v0 mid-lane worker is **claude-ds** (DeepSeek behind a Claude Code harness) — not a native DeepSeek CLI yet.
+`cursor-route` mid lane runs **DeepSeek**, not Anthropic. Claude Code is only the terminal harness; bills go to DeepSeek when `ANTHROPIC_BASE_URL` points at them.
 
-**Option A — Cemini / public shim on PATH**
-
-```bash
-# Prefer these binaries (health looks for them in order):
-command -v claude-ds || command -v deepseek-claude
-```
-
-**Option B — stock Claude pointed at DeepSeek (explicit opt-in)**
+**Recommended (official DeepSeek → Claude Code):**
 
 ```bash
-# Configure Claude Code for your DeepSeek endpoint/model per DeepSeek docs,
-# then allow the fallback:
-export CURSOR_ROUTE_ALLOW_STOCK_CLAUDE=1
-cursor-route health
+npm i -g @anthropic-ai/claude-code
+
+export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
+export ANTHROPIC_AUTH_TOKEN=YOUR_DEEPSEEK_API_KEY   # from platform.deepseek.com
+export ANTHROPIC_MODEL=deepseek-v4-pro[1m]
+export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash
+export CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash
+
+cursor-route health          # worker:claude-ds should be ✓
 cursor-route start --lane mid "…"
 ```
 
-Without A or B, use `--lane hard` / `--worker grok` only.
+Persist the same vars under `~/.claude/settings.json` → `"env": { … }` if you want them every shell.
+
+**Also accepted:** `claude-ds` or `deepseek-claude` on PATH (Cemini shims).
+
+**Not the default:** bare `claude` still talking to Anthropic. Health refuses that so a misconfigured install cannot silently burn frontier $ rates. Escape hatch only: `CURSOR_ROUTE_ALLOW_ANTHROPIC=1`.
+
+No DeepSeek yet? Use `--lane hard` / `--worker grok` (X Premium).
 
 ## Jobs directory
 
