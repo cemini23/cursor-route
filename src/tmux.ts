@@ -1,6 +1,7 @@
 import { spawnSync, execSync } from "node:child_process";
 import { config, sessionName } from "./config.ts";
 import { shellQuote } from "./util.ts";
+import { markCompleteInvoker } from "./runtime.ts";
 
 export function isTmuxAvailable(): boolean {
   try {
@@ -74,8 +75,9 @@ export function attachHint(jobId: string): string {
 }
 
 /**
- * Create a detached tmux session that runs `workerCmd`, logs via `script`,
+ * Create a detached tmux session that runs `workerCmd` via `sh -c` under `script`,
  * then marks the job complete and exits the session.
+ * Always quote the shell expression so macOS BSD `script` does not split `cd && …`.
  */
 export function createWorkerSession(options: {
   jobId: string;
@@ -87,19 +89,23 @@ export function createWorkerSession(options: {
 }): { ok: true; session: string } | { ok: false; error: string } {
   const name = sessionName(options.jobId);
   const isLinux = process.platform === "linux";
+  const invoker = markCompleteInvoker(options.markCompleteScript);
 
   const completion = [
     `exit_code=$?`,
-    `bun ${shellQuote(options.markCompleteScript)} ${shellQuote(options.jobFile)} "$exit_code" ${shellQuote(options.logFile)}`,
+    `${invoker} ${shellQuote(options.jobFile)} "$exit_code" ${shellQuote(options.logFile)}`,
     `echo ""`,
     `echo "[cursor-route: session complete — closing in 5s]"`,
     `sleep 5`,
     `tmux kill-session -t ${shellQuote(name)} 2>/dev/null || true`,
   ].join("; ");
 
+  // Always run workerCmd under sh -c so `cd … && …` stays one expression.
+  // Linux script: script -q -e -c '<cmd>' <logfile>
+  // macOS script: script -q <logfile> <cmd> <args...>
   const wrapped = isLinux
-    ? `script -q -e -c ${shellQuote(options.workerCmd)} ${shellQuote(options.logFile)}; ${completion}`
-    : `script -q ${shellQuote(options.logFile)} ${options.workerCmd}; ${completion}`;
+    ? `script -q -e -c ${shellQuote(`/bin/sh -c ${shellQuote(options.workerCmd)}`)} ${shellQuote(options.logFile)}; ${completion}`
+    : `script -q ${shellQuote(options.logFile)} /bin/sh -c ${shellQuote(options.workerCmd)}; ${completion}`;
 
   const r = spawnSync(
     "tmux",

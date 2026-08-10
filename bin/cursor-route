@@ -16,8 +16,9 @@ if command -v bun >/dev/null 2>&1; then
 fi
 
 if command -v npx >/dev/null 2>&1; then
-  exec npx --yes tsx "$CLI" "$@"
+  # Pin tsx for supply-chain predictability (no floating --yes latest)
+  exec npx --yes tsx@4.19.4 "$CLI" "$@"
 fi
 
-echo "cursor-route: need Bun (https://bun.sh) or Node 20+ with npx/tsx" >&2
+echo "cursor-route: need Bun (https://bun.sh) or Node 20+ with npx" >&2
 exit 127

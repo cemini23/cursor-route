@@ -49,18 +49,23 @@ brew install tmux
 curl -fsSL https://bun.sh/install | bash   # or use Node 20+
 
 # Install cursor-route (git — npm publish follows once tagged)
-git clone https://github.com/cemini23/cursor-route.git ~/.cursor-route
-cd ~/.cursor-route && bun install
-export PATH="$HOME/.cursor-route/bin:$PATH"
-
+git clone https://github.com/cemini23/cursor-route.git ~/.cursor-route-src
+cd ~/.cursor-route-src && bun install
+mkdir -p ~/.local/bin
+ln -sf ~/.cursor-route-src/bin/cursor-route ~/.local/bin/cursor-route
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 # Auth workers
 grok login          # if using Grok
-# configure claude-ds / DeepSeek per README section below
+# configure claude-ds — see DeepSeek setup below
 
 cursor-route health
+# without tmux (CI / headless):
+CURSOR_ROUTE_RELAXED=1 cursor-route health
 ```
 
-Prefer **git clone / npm** over mystery `curl|bash` product installers. Bun’s own installer is optional if you already have Node.
+Prefer **git clone** until npm is published. Bun’s own installer is optional if you already have Node.
+
+> **Note:** `npm i -g cursor-route` will be the preferred channel after the first tagged publish. Until then use the clone path above.
 
 ### Cursor skill
 
@@ -68,10 +73,10 @@ Copy the skill into your project or user skills:
 
 ```bash
 mkdir -p .cursor/skills
-cp -R ~/.cursor-route/skills/route-orch .cursor/skills/
+cp -R ~/.cursor-route-src/skills/route-orch .cursor/skills/
 ```
 
-Then say **route this** / **/route** in Cursor — the skill delegates to `cursor-route` instead of coding in-parent.
+Then say **`/route-orch`** or **spawn workers** in Cursor — the skill delegates to `cursor-route` (does not replace private Cemini `/route`).
 
 ## Commands
 
@@ -97,9 +102,33 @@ Then say **route this** / **/route** in Cursor — the skill delegates to `curso
 
 Always-approve is **on** by default. Opt out: `--ask` or `CURSOR_ROUTE_ASK=1`.
 
-## DeepSeek honesty
+## DeepSeek setup
 
-v0 workers for DeepSeek use the **Claude Code harness** via `claude-ds` / `deepseek-claude` / configured `claude`. A native DeepSeek coding-harness adapter is on the roadmap — same job API, swap the adapter.
+v0 mid-lane worker is **claude-ds** (DeepSeek behind a Claude Code harness) — not a native DeepSeek CLI yet.
+
+**Option A — Cemini / public shim on PATH**
+
+```bash
+# Prefer these binaries (health looks for them in order):
+command -v claude-ds || command -v deepseek-claude
+```
+
+**Option B — stock Claude pointed at DeepSeek (explicit opt-in)**
+
+```bash
+# Configure Claude Code for your DeepSeek endpoint/model per DeepSeek docs,
+# then allow the fallback:
+export CURSOR_ROUTE_ALLOW_STOCK_CLAUDE=1
+cursor-route health
+cursor-route start --lane mid "…"
+```
+
+Without A or B, use `--lane hard` / `--worker grok` only.
+
+## Jobs directory
+
+Jobs default to `~/.local/share/cursor-route/jobs` (override with `CURSOR_ROUTE_JOBS_DIR`).
+This is **not** inside a git clone of this repo.
 
 ## Safety
 

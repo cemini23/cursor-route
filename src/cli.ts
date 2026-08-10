@@ -3,7 +3,7 @@
  * cursor-route CLI — Cursor brain, Grok + DeepSeek workers in tmux.
  */
 import { readFileSync, existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, basename } from "node:path";
 import { config, WORKERS, LANES, type WorkerKind, type Lane } from "./config.ts";
 import { runHealth, printHealth } from "./health.ts";
 import {
@@ -13,6 +13,7 @@ import {
   killJob,
   cleanJobs,
   jobPaths,
+  refreshStatus,
 } from "./jobs.ts";
 import {
   capturePane,
@@ -21,13 +22,15 @@ import {
   listManagedSessions,
   sessionExists,
 } from "./tmux.ts";
+import { looksLikeSecretMaterial } from "./secrets.ts";
 
-function usage(): never {
+function usage(exitCode = 0): never {
   console.log(`cursor-route v${config.version}
 
 Cursor stays the brain. Grok CLI + DeepSeek (claude-ds) are the parallel army.
 
 Usage:
+  cursor-route --version
   cursor-route health [--json]
   cursor-route start <prompt> [options]
   cursor-route start --prompt-file <path> [options]
@@ -42,18 +45,20 @@ Usage:
 
 Start options:
   --worker <grok|claude-ds>   Worker adapter (default: grok)
-  --lane <mid|hard>           Cemini /route lane → worker (mid=claude-ds, hard=grok)
+  --lane <mid|hard>           Lane → worker (mid=claude-ds, hard=grok)
   --dir <path>                Working directory (default: cwd)
   --ask                       Disable always-approve for this job
-  --dry-run                   Print launch command; do not start tmux
+  --dry-run                   Print launch command; do not start
   --no-tmux                   Headless background process (no attach/send)
   --json                      JSON output where supported
 
 Env:
-  CURSOR_ROUTE_ASK=1          Global opt-out of always-approve
-  CURSOR_ROUTE_JOBS_DIR       Override ~/.cursor-route/jobs
+  CURSOR_ROUTE_ASK=1                 Opt out of always-approve
+  CURSOR_ROUTE_JOBS_DIR              Override jobs dir (default: ~/.local/share/cursor-route/jobs)
+  CURSOR_ROUTE_RELAXED=1             health OK without tmux (headless CI)
+  CURSOR_ROUTE_ALLOW_STOCK_CLAUDE=1  Allow stock claude as mid-lane last resort
 `);
-  process.exit(0);
+  process.exit(exitCode);
 }
 
 function parseArgs(argv: string[]) {
@@ -67,9 +72,12 @@ function parseArgs(argv: string[]) {
       a === "--dry-run" ||
       a === "--no-tmux" ||
       a === "-h" ||
-      a === "--help"
+      a === "--help" ||
+      a === "--version" ||
+      a === "-V"
     ) {
       if (a === "-h" || a === "--help") flags.help = true;
+      if (a === "--version" || a === "-V") flags.version = true;
       if (a === "--dry-run") flags.dryRun = true;
       if (a === "--no-tmux") flags.noTmux = true;
       if (a === "--ask") flags.ask = true;
@@ -77,14 +85,20 @@ function parseArgs(argv: string[]) {
       continue;
     }
     if (a.startsWith("--")) {
-      const key = a.slice(2);
-      const val = argv[i + 1];
-      if (!val || val.startsWith("--")) {
-        flags[key] = true;
+      let key = a.slice(2);
+      let val: string | boolean = true;
+      if (key.includes("=")) {
+        const eq = key.indexOf("=");
+        val = key.slice(eq + 1);
+        key = key.slice(0, eq);
       } else {
-        flags[key] = val;
-        i++;
+        const next = argv[i + 1];
+        if (next && !next.startsWith("--")) {
+          val = next;
+          i++;
+        }
       }
+      flags[key] = val;
       continue;
     }
     positional.push(a);
@@ -104,13 +118,43 @@ function asLane(v: unknown): Lane | undefined {
   throw new Error(`Invalid --lane ${v}; expected ${LANES.join("|")}`);
 }
 
+function refuseSecrets(text: string, context: string): void {
+  if (looksLikeSecretMaterial(text)) {
+    console.error(
+      `Refusing ${context}: looks like secret key material. Remove tokens/keys and retry.`,
+    );
+    process.exit(3);
+  }
+}
+
+function refuseDangerousPromptFile(path: string): void {
+  const base = basename(path);
+  const resolved = resolve(path);
+  if (
+    base.startsWith(".env") ||
+    resolved.includes("/.ssh/") ||
+    base === "id_rsa" ||
+    base === "id_ed25519" ||
+    base.endsWith(".pem")
+  ) {
+    console.error(`Refusing --prompt-file path that looks credential-related: ${path}`);
+    process.exit(3);
+  }
+}
+
 async function main() {
   const argv = process.argv.slice(2);
-  if (argv.length === 0 || argv[0] === "-h" || argv[0] === "--help") usage();
+  if (argv.length === 0) usage(0);
+
+  if (argv[0] === "--version" || argv[0] === "-V") {
+    console.log(config.version);
+    return;
+  }
+  if (argv[0] === "-h" || argv[0] === "--help") usage(0);
 
   const cmd = argv[0];
-  const { flags, positional } = parseArgs(argv.slice(1));
-  const json = Boolean(flags.json);
+  const { flags: f, positional: pos } = parseArgs(argv.slice(1));
+  const json = Boolean(f.json);
 
   if (cmd === "health") {
     const report = runHealth();
@@ -120,37 +164,31 @@ async function main() {
 
   if (cmd === "start") {
     let prompt = "";
-    if (flags["prompt-file"]) {
-      const p = resolve(String(flags["prompt-file"]));
+    if (f["prompt-file"]) {
+      const p = resolve(String(f["prompt-file"]));
+      refuseDangerousPromptFile(p);
       if (!existsSync(p)) {
         console.error(`prompt file not found: ${p}`);
         process.exit(2);
       }
       prompt = readFileSync(p, "utf8");
     } else {
-      prompt = positional.join(" ").trim();
+      prompt = pos.join(" ").trim();
     }
     if (!prompt) {
       console.error("start requires a prompt or --prompt-file");
       process.exit(2);
     }
-
-    // Secret-deny soft check
-    if (/(api[_-]?key|sk-[a-zA-Z0-9]|BEGIN (RSA |OPENSSH )?PRIVATE KEY)/i.test(prompt)) {
-      console.error(
-        "Refusing to start: prompt looks like it contains secrets. Remove keys and retry.",
-      );
-      process.exit(3);
-    }
+    refuseSecrets(prompt, "to start");
 
     const result = startJob({
       prompt,
-      worker: asWorker(flags.worker),
-      lane: asLane(flags.lane),
-      cwd: flags.dir ? resolve(String(flags.dir)) : process.cwd(),
-      alwaysApprove: !flags.ask,
-      dryRun: Boolean(flags.dryRun),
-      noTmux: Boolean(flags.noTmux),
+      worker: asWorker(f.worker),
+      lane: asLane(f.lane),
+      cwd: f.dir ? resolve(String(f.dir)) : process.cwd(),
+      alwaysApprove: !f.ask,
+      dryRun: Boolean(f.dryRun),
+      noTmux: Boolean(f.noTmux),
     });
 
     if (!result.ok) {
@@ -169,6 +207,7 @@ async function main() {
       console.log(`session: ${result.job.tmuxSession}`);
       if (String(result.job.tmuxSession).startsWith("headless-")) {
         console.log(`mode:    headless (--no-tmux); use capture/status (no attach/send)`);
+        if (result.job.pid) console.log(`pid:     ${result.job.pid}`);
       } else {
         console.log(`attach:  ${attachHint(result.job.id)}`);
       }
@@ -178,12 +217,12 @@ async function main() {
   }
 
   if (cmd === "jobs") {
-    const limit = flags.limit ? Number(flags.limit) : config.jobsListLimit;
+    const limit = f.limit ? Number(f.limit) : config.jobsListLimit;
     const jobs = listJobs(limit);
     if (json) {
       console.log(JSON.stringify(jobs, null, 2));
     } else if (jobs.length === 0) {
-      console.log("No jobs yet. Try: cursor-route start \"say hello\" --worker grok");
+      console.log('No jobs yet. Try: cursor-route start "say hello" --worker grok');
     } else {
       for (const j of jobs) {
         const age = j.startedAt || j.createdAt;
@@ -196,17 +235,27 @@ async function main() {
   }
 
   if (cmd === "status") {
-    const id = positional[0];
+    const id = pos[0];
     if (!id) {
       console.error("status requires <jobId>");
       process.exit(2);
     }
-    const job = readJob(id);
+    let job = readJob(id);
     if (!job) {
       console.error(`Job not found: ${id}`);
       process.exit(1);
     }
-    const alive = sessionExists(job.tmuxSession);
+    job = refreshStatus(job);
+    const alive = job.tmuxSession.startsWith("headless-")
+      ? Boolean(job.pid && (() => {
+          try {
+            process.kill(job!.pid!, 0);
+            return true;
+          } catch {
+            return false;
+          }
+        })())
+      : sessionExists(job.tmuxSession);
     const view = { ...job, sessionAlive: alive };
     if (json) console.log(JSON.stringify(view, null, 2));
     else {
@@ -217,8 +266,8 @@ async function main() {
   }
 
   if (cmd === "capture") {
-    const id = positional[0];
-    const lines = positional[1] ? Number(positional[1]) : 50;
+    const id = pos[0];
+    const lines = pos[1] ? Number(pos[1]) : 50;
     if (!id) {
       console.error("capture requires <jobId>");
       process.exit(2);
@@ -228,10 +277,12 @@ async function main() {
       console.error(`Job not found: ${id}`);
       process.exit(1);
     }
-    if (sessionExists(job.tmuxSession)) {
+    if (!job.tmuxSession.startsWith("headless-") && sessionExists(job.tmuxSession)) {
       const out = capturePane(job.tmuxSession, lines);
-      process.stdout.write(out.endsWith("\n") ? out : out + "\n");
-      return;
+      if (out.trim()) {
+        process.stdout.write(out.endsWith("\n") ? out : out + "\n");
+        return;
+      }
     }
     const logPath = jobPaths(id).log;
     if (existsSync(logPath)) {
@@ -245,15 +296,20 @@ async function main() {
   }
 
   if (cmd === "send") {
-    const id = positional[0];
-    const message = positional.slice(1).join(" ").trim();
+    const id = pos[0];
+    const message = pos.slice(1).join(" ").trim();
     if (!id || !message) {
       console.error('send requires <jobId> "<message>"');
       process.exit(2);
     }
+    refuseSecrets(message, "to send");
     const job = readJob(id);
     if (!job) {
       console.error(`Job not found: ${id}`);
+      process.exit(1);
+    }
+    if (job.tmuxSession.startsWith("headless-")) {
+      console.error("send is not supported for --no-tmux jobs");
       process.exit(1);
     }
     if (!sendKeys(job.tmuxSession, message)) {
@@ -265,7 +321,7 @@ async function main() {
   }
 
   if (cmd === "attach") {
-    const id = positional[0];
+    const id = pos[0];
     if (!id) {
       console.error("attach requires <jobId>");
       process.exit(2);
@@ -275,7 +331,7 @@ async function main() {
   }
 
   if (cmd === "kill") {
-    const id = positional[0];
+    const id = pos[0];
     if (!id) {
       console.error("kill requires <jobId>");
       process.exit(2);
@@ -298,14 +354,14 @@ async function main() {
   }
 
   if (cmd === "clean") {
-    const days = flags.days ? Number(flags.days) : 7;
+    const days = f.days ? Number(f.days) : 7;
     const n = cleanJobs(days);
     console.log(`cleaned ${n} job(s) older than ${days}d`);
     return;
   }
 
   console.error(`Unknown command: ${cmd}`);
-  usage();
+  usage(2);
 }
 
 main().catch((err) => {

@@ -3,6 +3,7 @@ import { resolveWorker } from "./jobs.ts";
 import { config } from "./config.ts";
 import { shellQuote, newJobId } from "./util.ts";
 import { runHealth } from "./health.ts";
+import { looksLikeSecretMaterial } from "./secrets.ts";
 
 describe("resolveWorker", () => {
   test("lane mid → claude-ds", () => {
@@ -28,6 +29,18 @@ describe("util", () => {
   });
   test("newJobId length", () => {
     expect(newJobId()).toHaveLength(8);
+  });
+});
+
+describe("secrets", () => {
+  test("allows discussing API keys in prose", () => {
+    expect(looksLikeSecretMaterial("load the API key from env")).toBe(false);
+  });
+  test("blocks sk- material", () => {
+    expect(looksLikeSecretMaterial("token sk-abcdefghijklmnopqrstuvwxyz1234")).toBe(true);
+  });
+  test("blocks ghp_ material", () => {
+    expect(looksLikeSecretMaterial("ghp_abcdefghijklmnopqrstuvwx")).toBe(true);
   });
 });
 

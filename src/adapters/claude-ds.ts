@@ -3,8 +3,9 @@ import type { Adapter, WorkerHealth } from "./types.ts";
 import { shellQuote } from "../util.ts";
 
 /**
- * DeepSeek today rides Claude Code via a local `claude-ds` shim (or
- * `deepseek-claude` / configured `claude`). Native DeepSeek harness = later adapter.
+ * DeepSeek today rides Claude Code via a local `claude-ds` or `deepseek-claude` shim.
+ * Stock `claude` is NOT an automatic fallback (wrong bill / wrong provider).
+ * Native DeepSeek harness = later adapter.
  */
 function resolveClaudeDs(): { binary: string; mode: string } | null {
   const candidates: Array<{ cmd: string; mode: string }> = [
@@ -22,15 +23,22 @@ function resolveClaudeDs(): { binary: string; mode: string } | null {
       /* continue */
     }
   }
-  // Last resort: stock Claude Code — operator must point it at DeepSeek.
-  try {
-    const path = execSync("command -v claude", {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    if (path) return { binary: path, mode: "claude (configure DeepSeek base URL / model)" };
-  } catch {
-    /* empty */
+  // Explicit opt-in only
+  if (process.env.CURSOR_ROUTE_ALLOW_STOCK_CLAUDE === "1") {
+    try {
+      const path = execSync("command -v claude", {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+      if (path) {
+        return {
+          binary: path,
+          mode: "claude (CURSOR_ROUTE_ALLOW_STOCK_CLAUDE=1 — configure DeepSeek base URL)",
+        };
+      }
+    } catch {
+      /* empty */
+    }
   }
   return null;
 }
@@ -46,7 +54,7 @@ export const claudeDsAdapter: Adapter = {
         ok: false,
         binary: null,
         detail:
-          "claude-ds / deepseek-claude / claude not on PATH — see README DeepSeek setup",
+          "claude-ds / deepseek-claude not on PATH — see README DeepSeek setup (stock claude needs CURSOR_ROUTE_ALLOW_STOCK_CLAUDE=1)",
       };
     }
     return {
@@ -65,8 +73,7 @@ export const claudeDsAdapter: Adapter = {
     const ask = process.env.CURSOR_ROUTE_ASK === "1" || process.env.CLAUDE_DS_ASK === "1";
     const skip = alwaysApprove && !ask;
 
-    // Prefer claude-ds PromptFile surface when binary is the shim.
-    if (resolved.mode === "claude-ds") {
+    if (resolved.mode.startsWith("claude-ds")) {
       const parts = [
         shellQuote(resolved.binary),
         "-PromptFile",
@@ -80,7 +87,6 @@ export const claudeDsAdapter: Adapter = {
       };
     }
 
-    // deepseek-claude or stock claude: -p prompt
     const parts = [
       shellQuote(resolved.binary),
       "-p",

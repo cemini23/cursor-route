@@ -5,16 +5,21 @@ import {
   readdirSync,
   existsSync,
   unlinkSync,
-  createWriteStream,
+  openSync,
+  closeSync,
+  chmodSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import { config, sessionName, type Lane, type WorkerKind } from "./config.ts";
 import { getAdapter } from "./adapters/index.ts";
 import { spawn } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { createWorkerSession, sessionExists, killSession } from "./tmux.ts";
 import { newJobId, shellQuote } from "./util.ts";
+import { markCompleteInvoker } from "./runtime.ts";
+import { assertJobId, JOB_ID_RE } from "./secrets.ts";
 
 export type JobStatus = "pending" | "running" | "completed" | "failed" | "killed";
 
@@ -28,28 +33,55 @@ export interface Job {
   cwd: string;
   alwaysApprove: boolean;
   tmuxSession: string;
+  /** Headless process id (process group leader). */
+  pid?: number;
   createdAt: string;
   startedAt?: string;
   completedAt?: string;
   error?: string;
   logBytes?: number;
   logTail?: string;
+  exitCode?: number;
 }
 
 function ensureJobsDir(): void {
-  mkdirSync(config.jobsDir, { recursive: true });
+  mkdirSync(config.jobsDir, { recursive: true, mode: 0o700 });
+  try {
+    chmodSync(config.jobsDir, 0o700);
+  } catch {
+    /* ignore */
+  }
+}
+
+function writeSecure(path: string, data: string): void {
+  writeFileSync(path, data, { mode: 0o600 });
+}
+
+function underJobsDir(id: string, ext: string): string {
+  assertJobId(id);
+  const base = resolve(config.jobsDir);
+  const full = resolve(join(base, `${id}${ext}`));
+  if (!full.startsWith(base + "/") && full !== base) {
+    throw new Error("Job path escapes jobsDir");
+  }
+  return full;
 }
 
 export function jobPaths(id: string) {
   ensureJobsDir();
   return {
-    json: join(config.jobsDir, `${id}.json`),
-    prompt: join(config.jobsDir, `${id}.prompt`),
-    log: join(config.jobsDir, `${id}.log`),
+    json: underJobsDir(id, ".json"),
+    prompt: underJobsDir(id, ".prompt"),
+    log: underJobsDir(id, ".log"),
   };
 }
 
 export function readJob(id: string): Job | null {
+  try {
+    assertJobId(id);
+  } catch {
+    return null;
+  }
   const p = jobPaths(id).json;
   if (!existsSync(p)) return null;
   try {
@@ -60,27 +92,88 @@ export function readJob(id: string): Job | null {
 }
 
 export function writeJob(job: Job): void {
-  writeFileSync(jobPaths(job.id).json, JSON.stringify(job, null, 2));
+  writeSecure(jobPaths(job.id).json, JSON.stringify(job, null, 2));
 }
 
-function refreshStatus(job: Job): Job {
-  if (job.status === "running") {
-    const alive = sessionExists(job.tmuxSession);
-    if (!alive) {
-      // Completion hook may already have written status; re-read.
-      const fresh = readJob(job.id);
-      if (fresh && fresh.status !== "running") return fresh;
-      job.status = "completed";
-      job.completedAt = job.completedAt || new Date().toISOString();
-      writeJob(job);
+function pidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function sleepMs(ms: number): void {
+  spawnSync("sleep", [String(ms / 1000)]);
+}
+
+function terminatePid(pid: number): boolean {
+  const trySignal = (sig: NodeJS.Signals | number, group: boolean) => {
+    try {
+      process.kill(group ? -pid : pid, sig);
+      return true;
+    } catch {
+      return false;
     }
+  };
+  trySignal("SIGTERM", true);
+  trySignal("SIGTERM", false);
+  for (let i = 0; i < 10; i++) {
+    if (!pidAlive(pid)) return true;
+    sleepMs(100);
+  }
+  trySignal("SIGKILL", true);
+  trySignal("SIGKILL", false);
+  for (let i = 0; i < 10; i++) {
+    if (!pidAlive(pid)) return true;
+    sleepMs(100);
+  }
+  return !pidAlive(pid);
+}
+
+/** Refresh running jobs without inventing success from "session gone". */
+export function refreshStatus(job: Job): Job {
+  if (job.status !== "running") return job;
+
+  // Prefer completion-hook result if already written.
+  const fresh = readJob(job.id);
+  if (fresh && fresh.status !== "running") return fresh;
+
+  const headless = job.tmuxSession.startsWith("headless-");
+  if (headless) {
+    if (job.pid && pidAlive(job.pid)) return job;
+    if (job.pid && !pidAlive(job.pid)) {
+      // Process exited but hook may not have run — mark unknown failure, not success.
+      const again = readJob(job.id);
+      if (again && again.status !== "running") return again;
+      job.status = "failed";
+      job.error = job.error || "Headless worker exited without completion marker";
+      job.completedAt = new Date().toISOString();
+      writeJob(job);
+      return job;
+    }
+    // No pid recorded (legacy) — do not flip to completed.
+    return job;
+  }
+
+  // tmux path: session gone → re-read; if still running, mark failed (unknown), not completed.
+  if (!sessionExists(job.tmuxSession)) {
+    const again = readJob(job.id);
+    if (again && again.status !== "running") return again;
+    job.status = "failed";
+    job.error = job.error || "tmux session ended without completion marker";
+    job.completedAt = new Date().toISOString();
+    writeJob(job);
   }
   return job;
 }
 
 export function listJobs(limit = config.jobsListLimit): Job[] {
   ensureJobsDir();
-  const files = readdirSync(config.jobsDir).filter((f) => f.endsWith(".json"));
+  const files = readdirSync(config.jobsDir).filter(
+    (f) => f.endsWith(".json") && JOB_ID_RE.test(f.replace(/\.json$/, "")),
+  );
   const jobs: Job[] = [];
   for (const f of files) {
     try {
@@ -101,7 +194,6 @@ export interface StartOptions {
   cwd?: string;
   alwaysApprove?: boolean;
   dryRun?: boolean;
-  /** Background process without tmux (CI / hosts without tmux). No attach/send. */
   noTmux?: boolean;
 }
 
@@ -124,11 +216,17 @@ export function startJob(opts: StartOptions): {
     process.env.CURSOR_ROUTE_ASK !== "1" &&
     process.env.CLAUDE_DS_ASK !== "1";
 
+  // Preflight: requested worker must be healthy
+  const adapter = getAdapter(worker);
+  const health = adapter.health();
+  if (!health.ok && !opts.dryRun) {
+    return { ok: false, error: `Worker ${worker} unavailable: ${health.detail}` };
+  }
+
   const id = newJobId();
   const paths = jobPaths(id);
-  writeFileSync(paths.prompt, opts.prompt);
+  writeSecure(paths.prompt, opts.prompt);
 
-  const adapter = getAdapter(worker);
   let plan;
   try {
     plan = adapter.buildLaunch({
@@ -149,39 +247,70 @@ export function startJob(opts: StartOptions): {
     prompt: opts.prompt,
     cwd,
     alwaysApprove: plan.alwaysApprove,
-    tmuxSession: sessionName(id),
+    tmuxSession: opts.noTmux ? `headless-${id}` : sessionName(id),
     createdAt: new Date().toISOString(),
   };
-  writeJob(job);
 
   if (opts.dryRun) {
+    // No durable prompt retention for dry-run
+    try {
+      unlinkSync(paths.prompt);
+    } catch {
+      /* ignore */
+    }
     return { ok: true, job, dryRun: true, command: plan.command };
   }
 
   const here = dirname(fileURLToPath(import.meta.url));
   const markComplete = join(here, "mark-complete.ts");
+  const invoker = markCompleteInvoker(markComplete);
+
+  // Persist running BEFORE launch so fast workers cannot race completion overwrite.
+  job.status = "running";
+  job.startedAt = new Date().toISOString();
+  writeJob(job);
 
   if (opts.noTmux) {
-    job.tmuxSession = `headless-${id}`;
-    writeJob(job);
     const wrapped = [
       plan.command,
       `exit_code=$?`,
-      `bun ${shellQuote(markComplete)} ${shellQuote(paths.json)} "$exit_code" ${shellQuote(paths.log)}`,
+      `${invoker} ${shellQuote(paths.json)} "$exit_code" ${shellQuote(paths.log)}`,
       `exit $exit_code`,
     ].join("; ");
+
+    let logFd: number | undefined;
+    try {
+      logFd = openSync(paths.log, "a", 0o600);
+    } catch (e) {
+      job.status = "failed";
+      job.error = `Cannot open log: ${(e as Error).message}`;
+      job.completedAt = new Date().toISOString();
+      writeJob(job);
+      return { ok: false, error: job.error };
+    }
+
     const child = spawn("sh", ["-c", wrapped], {
       cwd,
       detached: true,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["ignore", logFd, logFd],
     });
-    const logStream = createWriteStream(paths.log, { flags: "a" });
-    child.stdout?.pipe(logStream);
-    child.stderr?.pipe(logStream);
-    child.unref();
-    job.status = "running";
-    job.startedAt = new Date().toISOString();
+    try {
+      closeSync(logFd);
+    } catch {
+      /* ignore */
+    }
+
+    if (child.pid == null) {
+      job.status = "failed";
+      job.error = "Failed to spawn headless worker";
+      job.completedAt = new Date().toISOString();
+      writeJob(job);
+      return { ok: false, error: job.error };
+    }
+
+    job.pid = child.pid;
     writeJob(job);
+    child.unref();
     return { ok: true, job };
   }
 
@@ -202,8 +331,6 @@ export function startJob(opts: StartOptions): {
     return { ok: false, error: created.error };
   }
 
-  job.status = "running";
-  job.startedAt = new Date().toISOString();
   writeJob(job);
   return { ok: true, job };
 }
@@ -211,7 +338,26 @@ export function startJob(opts: StartOptions): {
 export function killJob(id: string): { ok: true; job: Job } | { ok: false; error: string } {
   const job = readJob(id);
   if (!job) return { ok: false, error: `Job not found: ${id}` };
-  killSession(job.tmuxSession);
+
+  if (job.tmuxSession.startsWith("headless-")) {
+    if (job.pid) {
+      const ok = terminatePid(job.pid);
+      if (!ok) {
+        return { ok: false, error: `Failed to kill pid ${job.pid}` };
+      }
+    } else {
+      return {
+        ok: false,
+        error: "Headless job has no pid — cannot kill (legacy job). Kill the worker process manually.",
+      };
+    }
+  } else {
+    const killed = killSession(job.tmuxSession);
+    if (!killed && sessionExists(job.tmuxSession)) {
+      return { ok: false, error: `Failed to kill tmux session ${job.tmuxSession}` };
+    }
+  }
+
   job.status = "killed";
   job.completedAt = new Date().toISOString();
   writeJob(job);
@@ -224,18 +370,18 @@ export function cleanJobs(olderThanDays = 7): number {
   let n = 0;
   for (const f of readdirSync(config.jobsDir)) {
     if (!f.endsWith(".json")) continue;
-    const p = join(config.jobsDir, f);
+    const id = f.replace(/\.json$/, "");
+    if (!JOB_ID_RE.test(id)) continue;
     try {
-      const job = JSON.parse(readFileSync(p, "utf8")) as Job;
+      const job = JSON.parse(readFileSync(join(config.jobsDir, f), "utf8")) as Job;
       const t = Date.parse(job.completedAt || job.createdAt);
       if (
         Number.isFinite(t) &&
         t < cutoff &&
         (job.status === "completed" || job.status === "failed" || job.status === "killed")
       ) {
-        const id = job.id;
-        for (const ext of [".json", ".prompt", ".log"]) {
-          const fp = join(config.jobsDir, `${id}${ext}`);
+        for (const ext of [".json", ".prompt", ".log"] as const) {
+          const fp = underJobsDir(id, ext);
           if (existsSync(fp)) unlinkSync(fp);
         }
         n++;
