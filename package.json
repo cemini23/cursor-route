@@ -1,0 +1,50 @@
+{
+  "name": "cursor-route",
+  "version": "0.1.0",
+  "description": "Cursor stays the brain. Grok CLI + DeepSeek (claude-ds) are the parallel army — lane-aware /route orchestration in tmux.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "cursor-route": "./bin/cursor-route"
+  },
+  "files": [
+    "bin",
+    "src",
+    "skills",
+    "LICENSE",
+    "SECURITY.md",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "health": "bun run src/cli.ts health",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "cursor",
+    "grok",
+    "deepseek",
+    "claude-ds",
+    "tmux",
+    "orchestrator",
+    "agents",
+    "route"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cemini23/cursor-route.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cemini23/cursor-route/issues"
+  },
+  "homepage": "https://github.com/cemini23/cursor-route#readme",
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.0"
+  },
+  "dependencies": {}
+}
