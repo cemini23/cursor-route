@@ -12,6 +12,8 @@ export interface LaunchPlan {
   /** Full shell command to run inside tmux (prompt already inlined via cat). */
   command: string;
   alwaysApprove: boolean;
+  /** Extra env for the worker process (never print secret values). */
+  env?: Record<string, string>;
 }
 
 export interface Adapter {

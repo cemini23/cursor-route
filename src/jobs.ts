@@ -211,10 +211,11 @@ export function startJob(opts: StartOptions): {
 } | { ok: false; error: string } {
   const worker = resolveWorker(opts);
   const cwd = opts.cwd || process.cwd();
+  // CURSOR_ROUTE_ASK applies to all workers; CLAUDE_DS_ASK is mid-lane only
   const alwaysApprove =
     opts.alwaysApprove !== false &&
     process.env.CURSOR_ROUTE_ASK !== "1" &&
-    process.env.CLAUDE_DS_ASK !== "1";
+    !(worker === "claude-ds" && process.env.CLAUDE_DS_ASK === "1");
 
   // Preflight: requested worker must be healthy
   const adapter = getAdapter(worker);
@@ -235,6 +236,11 @@ export function startJob(opts: StartOptions): {
       alwaysApprove,
     });
   } catch (e) {
+    try {
+      unlinkSync(paths.prompt);
+    } catch {
+      /* ignore */
+    }
     return { ok: false, error: (e as Error).message };
   }
 
@@ -258,7 +264,15 @@ export function startJob(opts: StartOptions): {
     } catch {
       /* ignore */
     }
-    return { ok: true, job, dryRun: true, command: plan.command };
+    const envNote = plan.env
+      ? ` (+env: ${Object.keys(plan.env).join(",")})`
+      : "";
+    return {
+      ok: true,
+      job,
+      dryRun: true,
+      command: plan.command + envNote,
+    };
   }
 
   const here = dirname(fileURLToPath(import.meta.url));
@@ -293,6 +307,7 @@ export function startJob(opts: StartOptions): {
       cwd,
       detached: true,
       stdio: ["ignore", logFd, logFd],
+      env: plan.env ? { ...process.env, ...plan.env } : process.env,
     });
     try {
       closeSync(logFd);
@@ -308,8 +323,13 @@ export function startJob(opts: StartOptions): {
       return { ok: false, error: job.error };
     }
 
-    job.pid = child.pid;
-    writeJob(job);
+    // Merge-on-write: only set pid if still running (avoid clobbering mark-complete)
+    const latest = readJob(id) || job;
+    if (latest.status === "running" || latest.status === "pending") {
+      latest.pid = child.pid;
+      writeJob(latest);
+      Object.assign(job, latest);
+    }
     child.unref();
     return { ok: true, job };
   }
@@ -321,6 +341,7 @@ export function startJob(opts: StartOptions): {
     logFile: paths.log,
     jobFile: paths.json,
     markCompleteScript: markComplete,
+    env: plan.env,
   });
 
   if (!created.ok) {
@@ -331,13 +352,21 @@ export function startJob(opts: StartOptions): {
     return { ok: false, error: created.error };
   }
 
-  writeJob(job);
-  return { ok: true, job };
+  // Re-read before final write — mark-complete may have already finished
+  const after = readJob(id) || job;
+  if (after.status === "running" || after.status === "pending") {
+    writeJob(after);
+  }
+  return { ok: true, job: after };
 }
 
 export function killJob(id: string): { ok: true; job: Job } | { ok: false; error: string } {
   const job = readJob(id);
   if (!job) return { ok: false, error: `Job not found: ${id}` };
+
+  if (job.status === "completed" || job.status === "failed" || job.status === "killed") {
+    return { ok: false, error: `Job already terminal (${job.status}) — refuse kill rewrite` };
+  }
 
   if (job.tmuxSession.startsWith("headless-")) {
     if (job.pid) {
@@ -358,10 +387,15 @@ export function killJob(id: string): { ok: true; job: Job } | { ok: false; error
     }
   }
 
-  job.status = "killed";
-  job.completedAt = new Date().toISOString();
-  writeJob(job);
-  return { ok: true, job };
+  // Merge-on-write: do not clobber a completion that landed mid-kill
+  const latest = readJob(id) || job;
+  if (latest.status === "completed" || latest.status === "failed") {
+    return { ok: false, error: `Job finished during kill (${latest.status})` };
+  }
+  latest.status = "killed";
+  latest.completedAt = new Date().toISOString();
+  writeJob(latest);
+  return { ok: true, job: latest };
 }
 
 export function cleanJobs(olderThanDays = 7): number {

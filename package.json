@@ -1,6 +1,6 @@
 {
   "name": "cursor-route",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Cursor stays the brain. Grok CLI + DeepSeek (claude-ds) are the parallel army — lane-aware /route orchestration in tmux.",
   "type": "module",
   "license": "MIT",
@@ -14,7 +14,9 @@
     "bin",
     "src",
     "skills",
-    "docs",
+    "docs/DEMO_GIF.md",
+    "docs/demo-notes.md",
+    "docs/fixtures",
     "LICENSE",
     "SECURITY.md",
     "CONTRIBUTING.md",

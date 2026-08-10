@@ -20,7 +20,7 @@ import { shellQuote } from "../util.ts";
 function which(cmd: string): string | null {
   try {
     return (
-      execSync(`command -v ${cmd}`, {
+      execSync(`command -v ${shellQuote(cmd)}`, {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "ignore"],
       }).trim() || null
@@ -30,34 +30,48 @@ function which(cmd: string): string | null {
   }
 }
 
+/** True when URL hostname is deepseek.com (or a subdomain). */
+export function isDeepSeekBaseUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    return host === "deepseek.com" || host.endsWith(".deepseek.com");
+  } catch {
+    return false;
+  }
+}
+
 function deepseekBaseFromSettings(): string | null {
-  const candidates = [
-    join(homedir(), ".claude", "settings.json"),
-    join(process.cwd(), ".claude", "settings.json"),
-  ];
-  for (const p of candidates) {
-    if (!existsSync(p)) continue;
-    try {
-      const j = JSON.parse(readFileSync(p, "utf8")) as {
-        env?: Record<string, string>;
-      };
-      const url = j.env?.ANTHROPIC_BASE_URL;
-      if (url) return url;
-    } catch {
-      /* ignore */
-    }
+  // Home settings only — do not trust cwd/.claude/settings.json (spoof / exfil risk)
+  const p = join(homedir(), ".claude", "settings.json");
+  if (!existsSync(p)) return null;
+  try {
+    const j = JSON.parse(readFileSync(p, "utf8")) as {
+      env?: Record<string, string>;
+    };
+    const url = j.env?.ANTHROPIC_BASE_URL;
+    if (url && isDeepSeekBaseUrl(url)) return url;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+/** Resolved DeepSeek base URL for the mid-lane harness, or null. */
+export function resolvedDeepSeekBaseUrl(): string | null {
+  for (const candidate of [
+    process.env.ANTHROPIC_BASE_URL,
+    process.env.CURSOR_ROUTE_ANTHROPIC_BASE_URL,
+    deepseekBaseFromSettings(),
+  ]) {
+    if (candidate && isDeepSeekBaseUrl(candidate)) return candidate;
   }
   return null;
 }
 
 /** True when Claude Code harness is routed to DeepSeek (cheap path). */
 export function isDeepSeekRouted(): boolean {
-  const url =
-    process.env.ANTHROPIC_BASE_URL ||
-    process.env.CURSOR_ROUTE_ANTHROPIC_BASE_URL ||
-    deepseekBaseFromSettings() ||
-    "";
-  return /deepseek\.com/i.test(url);
+  return Boolean(resolvedDeepSeekBaseUrl());
 }
 
 function resolveClaudeDs(): { binary: string; mode: string } | null {
@@ -93,6 +107,25 @@ function resolveClaudeDs(): { binary: string; mode: string } | null {
   return null;
 }
 
+/**
+ * Env that must reach stock `claude` for DeepSeek routing.
+ * Passed via process/tmux env — never interpolated into the printed command.
+ */
+function deepSeekWorkerEnv(): Record<string, string> | undefined {
+  const base = resolvedDeepSeekBaseUrl();
+  if (!base) return undefined;
+  const env: Record<string, string> = { ANTHROPIC_BASE_URL: base };
+  const token =
+    process.env.ANTHROPIC_AUTH_TOKEN ||
+    process.env.ANTHROPIC_API_KEY ||
+    process.env.DEEPSEEK_API_KEY ||
+    "";
+  if (token) env.ANTHROPIC_AUTH_TOKEN = token;
+  const model = process.env.ANTHROPIC_MODEL;
+  if (model) env.ANTHROPIC_MODEL = model;
+  return env;
+}
+
 export const claudeDsAdapter: Adapter = {
   kind: "claude-ds",
   label: "DeepSeek (via Claude Code harness)",
@@ -124,6 +157,10 @@ export const claudeDsAdapter: Adapter = {
 
     const ask = process.env.CURSOR_ROUTE_ASK === "1" || process.env.CLAUDE_DS_ASK === "1";
     const skip = alwaysApprove && !ask;
+    // Stock `claude` needs DeepSeek env injected into the worker process
+    // (tmux panes may not inherit client env from a long-lived server).
+    const env =
+      resolved.mode.startsWith("claude → DeepSeek") ? deepSeekWorkerEnv() : undefined;
 
     if (resolved.mode.startsWith("claude-ds")) {
       const parts = [
@@ -136,6 +173,7 @@ export const claudeDsAdapter: Adapter = {
         worker: "claude-ds",
         command: `cd ${shellQuote(cwd)} && ${parts.join(" ")}`,
         alwaysApprove: skip,
+        env,
       };
     }
 
@@ -149,6 +187,7 @@ export const claudeDsAdapter: Adapter = {
       worker: "claude-ds",
       command: `cd ${shellQuote(cwd)} && ${parts.join(" ")}`,
       alwaysApprove: skip,
+      env,
     };
   },
 };

@@ -2,7 +2,7 @@
 /**
  * cursor-route CLI — Cursor brain, Grok + DeepSeek workers in tmux.
  */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, realpathSync, statSync } from "node:fs";
 import { resolve, basename } from "node:path";
 import { config, WORKERS, LANES, type WorkerKind, type Lane } from "./config.ts";
 import { runHealth, printHealth } from "./health.ts";
@@ -22,7 +22,7 @@ import {
   listManagedSessions,
   sessionExists,
 } from "./tmux.ts";
-import { looksLikeSecretMaterial } from "./secrets.ts";
+import { looksLikeSecretMaterial, redactSecrets } from "./secrets.ts";
 
 function usage(exitCode = 0): never {
   console.log(`cursor-route v${config.version}
@@ -66,6 +66,10 @@ function parseArgs(argv: string[]) {
   const positional: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
+    if (a === "--") {
+      positional.push(...argv.slice(i + 1));
+      break;
+    }
     if (
       a === "--json" ||
       a === "--ask" ||
@@ -106,6 +110,30 @@ function parseArgs(argv: string[]) {
   return { flags, positional };
 }
 
+/** Require a string value for flags that must not be bare booleans. */
+function requireStringFlag(
+  flags: Record<string, string | boolean>,
+  key: string,
+): string | undefined {
+  if (!(key in flags)) return undefined;
+  const v = flags[key];
+  if (typeof v !== "string" || !v.trim()) {
+    console.error(`--${key} requires a value`);
+    process.exit(2);
+  }
+  return v;
+}
+
+function requireNonNegNumber(raw: string | undefined, label: string, fallback: number): number {
+  if (raw === undefined) return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) {
+    console.error(`${label} must be a non-negative number`);
+    process.exit(2);
+  }
+  return n;
+}
+
 function asWorker(v: unknown): WorkerKind | undefined {
   if (typeof v !== "string") return undefined;
   if ((WORKERS as string[]).includes(v)) return v as WorkerKind;
@@ -128,14 +156,31 @@ function refuseSecrets(text: string, context: string): void {
 }
 
 function refuseDangerousPromptFile(path: string): void {
-  const base = basename(path);
-  const resolved = resolve(path);
+  let resolved: string;
+  try {
+    resolved = realpathSync(path);
+  } catch {
+    resolved = resolve(path);
+  }
+  const base = basename(resolved);
+  const lower = resolved.toLowerCase();
   if (
     base.startsWith(".env") ||
-    resolved.includes("/.ssh/") ||
+    lower.includes("/.ssh/") ||
+    lower.includes("/.aws/") ||
+    lower.includes("/.kube/") ||
+    base === ".npmrc" ||
+    base === ".git-credentials" ||
+    base === ".pgpass" ||
     base === "id_rsa" ||
     base === "id_ed25519" ||
-    base.endsWith(".pem")
+    base === "id_ecdsa" ||
+    base === "id_dsa" ||
+    base === "credentials" ||
+    base.endsWith(".pem") ||
+    base.endsWith(".key") ||
+    base.endsWith(".p12") ||
+    base.endsWith(".pfx")
   ) {
     console.error(`Refusing --prompt-file path that looks credential-related: ${path}`);
     process.exit(3);
@@ -163,9 +208,14 @@ async function main() {
   }
 
   if (cmd === "start") {
+    requireStringFlag(f, "worker");
+    requireStringFlag(f, "lane");
+    const promptFile = requireStringFlag(f, "prompt-file");
+    const dirFlag = requireStringFlag(f, "dir");
+
     let prompt = "";
-    if (f["prompt-file"]) {
-      const p = resolve(String(f["prompt-file"]));
+    if (promptFile) {
+      const p = resolve(promptFile);
       refuseDangerousPromptFile(p);
       if (!existsSync(p)) {
         console.error(`prompt file not found: ${p}`);
@@ -181,11 +231,25 @@ async function main() {
     }
     refuseSecrets(prompt, "to start");
 
+    let cwd = process.cwd();
+    if (dirFlag) {
+      cwd = resolve(dirFlag);
+      try {
+        if (!statSync(cwd).isDirectory()) {
+          console.error(`--dir is not a directory: ${cwd}`);
+          process.exit(2);
+        }
+      } catch {
+        console.error(`--dir does not exist: ${cwd}`);
+        process.exit(2);
+      }
+    }
+
     const result = startJob({
       prompt,
       worker: asWorker(f.worker),
       lane: asLane(f.lane),
-      cwd: f.dir ? resolve(String(f.dir)) : process.cwd(),
+      cwd,
       alwaysApprove: !f.ask,
       dryRun: Boolean(f.dryRun),
       noTmux: Boolean(f.noTmux),
@@ -197,11 +261,20 @@ async function main() {
     }
 
     if (json) {
-      console.log(JSON.stringify({ ...result.job, command: result.command }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            ...result.job,
+            command: result.command ? redactSecrets(result.command) : result.command,
+          },
+          null,
+          2,
+        ),
+      );
     } else if (result.dryRun) {
       console.log(`dry-run job ${result.job.id}`);
       console.log(`worker: ${result.job.worker}`);
-      console.log(`command: ${result.command}`);
+      console.log(`command: ${redactSecrets(result.command || "")}`);
     } else {
       console.log(`started ${result.job.id} (${result.job.worker})`);
       console.log(`session: ${result.job.tmuxSession}`);
@@ -217,7 +290,8 @@ async function main() {
   }
 
   if (cmd === "jobs") {
-    const limit = f.limit ? Number(f.limit) : config.jobsListLimit;
+    const limitRaw = requireStringFlag(f, "limit");
+    const limit = requireNonNegNumber(limitRaw, "--limit", config.jobsListLimit);
     const jobs = listJobs(limit);
     if (json) {
       console.log(JSON.stringify(jobs, null, 2));
@@ -267,7 +341,10 @@ async function main() {
 
   if (cmd === "capture") {
     const id = pos[0];
-    const lines = pos[1] ? Number(pos[1]) : 50;
+    const linesRaw = pos[1];
+    const lines = linesRaw
+      ? requireNonNegNumber(linesRaw, "capture lines", 50)
+      : 50;
     if (!id) {
       console.error("capture requires <jobId>");
       process.exit(2);
@@ -326,6 +403,15 @@ async function main() {
       console.error("attach requires <jobId>");
       process.exit(2);
     }
+    const job = readJob(id);
+    if (!job) {
+      console.error(`Job not found: ${id}`);
+      process.exit(1);
+    }
+    if (job.tmuxSession.startsWith("headless-")) {
+      console.error("headless job — use capture/status (no tmux attach)");
+      process.exit(1);
+    }
     console.log(attachHint(id));
     return;
   }
@@ -354,7 +440,8 @@ async function main() {
   }
 
   if (cmd === "clean") {
-    const days = f.days ? Number(f.days) : 7;
+    const daysRaw = requireStringFlag(f, "days");
+    const days = requireNonNegNumber(daysRaw, "--days", 7);
     const n = cleanJobs(days);
     console.log(`cleaned ${n} job(s) older than ${days}d`);
     return;

@@ -4,10 +4,12 @@ import { shellQuote } from "../util.ts";
 
 function findGrok(): string | null {
   try {
-    return execSync("command -v grok", {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim() || null;
+    return (
+      execSync("command -v grok", {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim() || null
+    );
   } catch {
     return null;
   }
@@ -34,8 +36,9 @@ export const grokAdapter: Adapter = {
     };
   },
   buildLaunch({ promptFile, cwd, alwaysApprove }) {
+    const binary = findGrok() || "grok";
     const parts = [
-      "grok",
+      shellQuote(binary),
       "-p",
       `"$(cat ${shellQuote(promptFile)})"`,
       "--cwd",

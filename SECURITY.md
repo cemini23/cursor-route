@@ -21,6 +21,7 @@ Do **not** open a public issue for credential leaks or RCE-class bugs.
 
 ## Supply chain
 
-- Runtime dependencies: **none** (Node/Bun + system `tmux` + worker CLIs).
+- Declared runtime npm dependencies: **none**. System needs: Node ≥20 or Bun, `tmux`, and worker CLIs (Grok / claude-ds).
+- On Node-only hosts (no Bun), the bin shim and completion hook may invoke **pinned** `npx --yes tsx@4.19.4` once to run TypeScript sources. Prefer Bun for offline / air-gapped use, or set PATH so `bun` is available.
 - Review `package.json` before upgrading.
 - Prefer pinned git tags for production installs.

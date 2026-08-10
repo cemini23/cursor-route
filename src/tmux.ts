@@ -49,10 +49,14 @@ export function capturePane(name: string, lines = 50): string {
 
 export function sendKeys(name: string, message: string): boolean {
   if (!sessionExists(name)) return false;
+  // Reject embedded newlines — they would submit early even with -l
+  if (/[\r\n]/.test(message)) return false;
   try {
-    execSync(`tmux send-keys -t ${shellQuote(name)} -- ${shellQuote(message)}`, {
-      stdio: "ignore",
-    });
+    // -l = literal keys (so "C-c" types text, does not SIGINT the worker)
+    execSync(
+      `tmux send-keys -l -t ${shellQuote(name)} -- ${shellQuote(message)}`,
+      { stdio: "ignore" },
+    );
     spawnSync("sleep", ["0.25"]);
     execSync(`tmux send-keys -t ${shellQuote(name)} Enter`, { stdio: "ignore" });
     return true;
@@ -86,6 +90,7 @@ export function createWorkerSession(options: {
   logFile: string;
   jobFile: string;
   markCompleteScript: string;
+  env?: Record<string, string>;
 }): { ok: true; session: string } | { ok: false; error: string } {
   const name = sessionName(options.jobId);
   const isLinux = process.platform === "linux";
@@ -107,11 +112,18 @@ export function createWorkerSession(options: {
     ? `script -q -e -c ${shellQuote(`/bin/sh -c ${shellQuote(options.workerCmd)}`)} ${shellQuote(options.logFile)}; ${completion}`
     : `script -q ${shellQuote(options.logFile)} /bin/sh -c ${shellQuote(options.workerCmd)}; ${completion}`;
 
-  const r = spawnSync(
-    "tmux",
-    ["new-session", "-d", "-s", name, "-c", options.cwd, wrapped],
-    { encoding: "utf8", cwd: options.cwd },
-  );
+  const args = ["new-session", "-d", "-s", name, "-c", options.cwd];
+  if (options.env) {
+    for (const [k, v] of Object.entries(options.env)) {
+      args.push("-e", `${k}=${v}`);
+    }
+  }
+  args.push(wrapped);
+
+  const r = spawnSync("tmux", args, {
+    encoding: "utf8",
+    cwd: options.cwd,
+  });
 
   if (r.status !== 0) {
     return {

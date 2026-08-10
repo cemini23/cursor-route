@@ -4,6 +4,7 @@
  * Invoked from tmux / headless completion hooks — keep dep-free.
  */
 import { readFileSync, writeFileSync } from "node:fs";
+import { redactSecrets } from "./secrets.ts";
 
 const jobPath = process.argv[2];
 const exitCode = Number(process.argv[3] ?? "1");
@@ -24,12 +25,7 @@ try {
       try {
         const log = readFileSync(logPath, "utf8");
         job.logBytes = Buffer.byteLength(log);
-        // Avoid retaining secret-looking tails in job metadata
-        const redacted = log
-          .replace(/\bsk-[a-zA-Z0-9]{20,}\b/g, "[REDACTED]")
-          .replace(/\bghp_[A-Za-z0-9]{20,}\b/g, "[REDACTED]")
-          .replace(/\bxox[baprs]-[A-Za-z0-9-]{10,}\b/gi, "[REDACTED]");
-        job.logTail = redacted.slice(-2000);
+        job.logTail = redactSecrets(log).slice(-2000);
       } catch {
         /* ignore */
       }

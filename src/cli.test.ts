@@ -3,8 +3,8 @@ import { resolveWorker } from "./jobs.ts";
 import { config } from "./config.ts";
 import { shellQuote, newJobId } from "./util.ts";
 import { runHealth } from "./health.ts";
-import { looksLikeSecretMaterial } from "./secrets.ts";
-import { isDeepSeekRouted } from "./adapters/claude-ds.ts";
+import { looksLikeSecretMaterial, redactSecrets } from "./secrets.ts";
+import { isDeepSeekRouted, isDeepSeekBaseUrl } from "./adapters/claude-ds.ts";
 
 describe("resolveWorker", () => {
   test("lane mid → claude-ds", () => {
@@ -40,8 +40,24 @@ describe("secrets", () => {
   test("blocks sk- material", () => {
     expect(looksLikeSecretMaterial("token sk-abcdefghijklmnopqrstuvwxyz1234")).toBe(true);
   });
-  test("blocks ghp_ material", () => {
+  test("blocks sk-proj and sk-ant", () => {
+    expect(
+      looksLikeSecretMaterial("sk-proj-abcdefghijklmnopqrstuvwxyz123456"),
+    ).toBe(true);
+    expect(
+      looksLikeSecretMaterial("sk-ant-api03-abcdefghijklmnopqrstuvwxyz"),
+    ).toBe(true);
+  });
+  test("blocks ghp_ and github_pat", () => {
     expect(looksLikeSecretMaterial("ghp_abcdefghijklmnopqrstuvwx")).toBe(true);
+    expect(
+      looksLikeSecretMaterial("github_pat_11AAAAAAAAabcdefghijklmnopqrstuvwxyz"),
+    ).toBe(true);
+  });
+  test("redactSecrets strips material", () => {
+    const out = redactSecrets("see sk-abcdefghijklmnopqrstuvwxyz1234 end");
+    expect(out).toContain("[REDACTED]");
+    expect(out).not.toContain("sk-abcd");
   });
 });
 
@@ -51,6 +67,8 @@ describe("deepseek routing", () => {
     process.env.ANTHROPIC_BASE_URL = "https://api.deepseek.com/anthropic";
     try {
       expect(isDeepSeekRouted()).toBe(true);
+      expect(isDeepSeekBaseUrl("https://api.deepseek.com/anthropic")).toBe(true);
+      expect(isDeepSeekBaseUrl("https://evil-deepseek.com.attacker.tld")).toBe(false);
     } finally {
       if (prev === undefined) delete process.env.ANTHROPIC_BASE_URL;
       else process.env.ANTHROPIC_BASE_URL = prev;

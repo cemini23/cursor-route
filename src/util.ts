@@ -13,7 +13,9 @@ export function newJobId(): string {
 
 export function commandExists(cmd: string): boolean {
   try {
-    const r = spawnSync("sh", ["-c", `command -v ${cmd}`], { encoding: "utf8" });
+    const r = spawnSync("sh", ["-c", `command -v ${shellQuote(cmd)}`], {
+      encoding: "utf8",
+    });
     return r.status === 0 && Boolean(r.stdout?.trim());
   } catch {
     return false;
