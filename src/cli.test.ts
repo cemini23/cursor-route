@@ -37,5 +37,22 @@ describe("health", () => {
     expect(r.product).toBe("cursor-route");
     expect(r.checks.length).toBeGreaterThan(3);
     expect(r.checks.some((c) => c.name === "tmux")).toBe(true);
+    expect(r.checks.some((c) => c.name === "cursor_cli")).toBe(true);
+  });
+
+  test("relaxed env can pass without tmux", () => {
+    const prev = process.env.CURSOR_ROUTE_RELAXED;
+    process.env.CURSOR_ROUTE_RELAXED = "1";
+    try {
+      const r = runHealth();
+      const tmux = r.checks.find((c) => c.name === "tmux");
+      if (tmux && !tmux.ok) {
+        expect(r.ok).toBe(true);
+        expect(r.checks.some((c) => c.name === "relaxed")).toBe(true);
+      }
+    } finally {
+      if (prev === undefined) delete process.env.CURSOR_ROUTE_RELAXED;
+      else process.env.CURSOR_ROUTE_RELAXED = prev;
+    }
   });
 });
