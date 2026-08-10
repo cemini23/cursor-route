@@ -44,18 +44,15 @@ Exact dollars vary — the point is **reuse subscriptions you already have**.
 | `script(1)` | Job logs (macOS/Linux) |
 
 ```bash
-# macOS
-brew install tmux
-curl -fsSL https://bun.sh/install | bash   # or use Node 20+
+# Prerequisites
+brew install tmux          # or build tmux into ~/.local
+# Bun optional — Node 20+ works via pinned tsx
 
-# Install cursor-route (git — npm publish follows once tagged)
-git clone https://github.com/cemini23/cursor-route.git ~/.cursor-route-src
-cd ~/.cursor-route-src && bun install
-mkdir -p ~/.local/bin
-ln -sf ~/.cursor-route-src/bin/cursor-route ~/.local/bin/cursor-route
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+# Preferred install
+npm i -g cursor-route
+
 # Auth workers
-grok login          # if using Grok
+grok login                 # if using Grok
 # configure claude-ds — see DeepSeek setup below
 
 cursor-route health
@@ -63,9 +60,13 @@ cursor-route health
 CURSOR_ROUTE_RELAXED=1 cursor-route health
 ```
 
-Prefer **git clone** until npm is published. Bun’s own installer is optional if you already have Node.
+**From source (dev):**
 
-> **Note:** `npm i -g cursor-route` will be the preferred channel after the first tagged publish. Until then use the clone path above.
+```bash
+git clone https://github.com/cemini23/cursor-route.git
+cd cursor-route && bun install
+./bin/cursor-route health
+```
 
 ### Cursor skill
 

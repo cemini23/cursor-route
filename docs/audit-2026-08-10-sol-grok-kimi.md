@@ -4,55 +4,61 @@
 
 Auditors: [Sol](fad461d6-9be9-421e-b42e-081cd7888a56) · [Grok](79e70632-1de7-456e-871b-cdb66b7b72f1) · [Kimi](9a0b224f-eacf-4a2f-969c-6854db1d6876)
 
-## Consensus (≥2 auditors agree)
+## Verdict rollup (pre-fix)
 
-| Finding | Fix shipped in `20b1580` |
-|---------|--------------------------|
-| Phantom `completed` when tmux/session absent | `refreshStatus` never invents success; headless uses PID |
-| Headless `kill` ineffective | Store PID + process-group terminate with poll |
-| macOS `script` breaks `cd && …` | Always `sh -c` under script on Darwin/Linux |
-| Completion hooks hardcode `bun` | `markCompleteInvoker()` → bun or pinned `tsx@4.19.4` |
-| Stock `claude` silent fallback | Hard-fail unless `CURSOR_ROUTE_ALLOW_STOCK_CLAUDE=1` |
-| Secret deny false-positives / send bypass | Material-only regex; applied to `start` + `send` |
-| Jobs in clone dir | Default `~/.local/share/cursor-route/jobs` |
-| Skill steals federation `/route` | Triggers → `/route-orch` / spawn workers |
-| Missing DeepSeek README setup | Added setup section + honesty |
+| Model | Verdict |
+|-------|---------|
+| GPTSOL | FAIL |
+| Cursor Grok | FAIL |
+| Kimi 3 | WARN |
 
-## Unique (single auditor — still investigated)
+**Overall (pre-fix):** REWORK — then SHIP-WITH-FIXES after 0.1.1.
 
-- [Sol] Job ID path traversal → `assertJobId` + path resolve check
-- [Sol] Fast-worker race before `running` write → persist `running` before launch
-- [Grok] Grok `--sandbox` default → deferred (document; break-glass later)
-- [Kimi] No hero.gif yet → still open (`docs/DEMO_GIF.md`); headless fixture exists
-- [Kimi] `bun run typecheck` red → fixed with `@types/bun`
-- [Kimi] No CI → `.github/workflows/ci.yml` added
+## Consensus (≥2 auditors)
+
+1. Headless `kill` did not kill (no PID) — phantom killed
+2. `refreshStatus` inferred `completed` from missing tmux — lies on `--no-tmux`
+3. Completion hooks hard-coded `bun` vs Node fallback
+4. macOS `script` left `cd && …` unquoted
+5. Stock `claude` silent fallback for “claude-ds”
+6. Secret deny false-positive on prose “API key”; `send` bypass
+7. Missing DeepSeek setup docs / mid-lane dead end for public users
+8. Skill `/route` collision with federation `/route`
+
+## Unique
+
+- [Sol] Job-id path traversal; dry-run side effects; race before `running` write
+- [Grok] Always-approve + skill contract burns private SIP/verify; Grok sandbox missing
+- [Kimi] No hero.gif; typecheck red; jobsDir collided with clone path; no CI
 
 ## Conflicts
 
 | Topic | Sol | Grok | Kimi | Resolution |
 |-------|-----|------|------|------------|
-| Overall verdict | FAIL | FAIL | WARN | **SHIP-WITH-FIXES** after `20b1580`; GIF/tmux still open |
-| Skill `/route` collision | — | critical | — | Renamed triggers; document non-overlap |
+| Overall ship | FAIL | FAIL | WARN | Fix criticals then soft-launch; GIF still deferred |
+| Skill name `/route` | — | critical rename | — | Renamed triggers to `/route-orch` |
 
-## Recommended fix order (done)
+## Fixes shipped in `20b1580` (v0.1.1)
 
-1. Status integrity + PID kill
-2. macOS script wrap + runtime invoker
-3. claude-ds hard-fail + secrets
-4. Docs/skill/CI/XDG jobs
+- PID-tracked headless spawn + polled terminate on `kill`
+- No phantom `completed` from session absence; exit via mark-complete / failed unknown
+- `markCompleteInvoker` (bun or pinned `tsx@4.19.4`)
+- macOS/Linux `script` always via `/bin/sh -c`
+- Stock Claude only with `CURSOR_ROUTE_ALLOW_STOCK_CLAUDE=1`
+- Material-only secret deny on `start` + `send`
+- XDG jobs dir `~/.local/share/cursor-route/jobs`
+- README DeepSeek setup; skill deconflict; CI workflow; `--version`; typecheck green
 
-## Remaining before viral tweet
+## Verify after fix
 
-1. `brew install tmux` (needs sudo once) → real attach/send GIF
-2. Top up Grok Build balance for hard-lane demos
-3. `npm publish` after tag (optional)
+- 11/11 tests · `tsc --noEmit` clean
+- Headless claude-ds → `CURSOR_ROUTE_SMOKE_OK2` · `exitCode: 0`
+- Headless `kill` → `status: killed`
+- Prose “API key” dry-run allowed; `sk-…` refused exit 3
 
-## Verdict rollup
+## Still open (not tweet-blockers for soft launch)
 
-| Model | Verdict |
-|-------|---------|
-| GPTSOL | FAIL (pre-fix) |
-| Cursor Grok | FAIL (pre-fix) |
-| Kimi 3 | WARN (pre-fix) |
-
-**Overall:** SHIP-WITH-FIXES — critical consensus addressed in v0.1.1 (`20b1580`). Re-audit after first real tmux demo recording.
+- Real tmux attach/send GIF (`docs/DEMO_GIF.md`) — needs `brew install tmux` (sudo)
+- npm publish
+- Grok Build balance for live grok demos
+- Optional: grok `--sandbox`, `wait` command, remove skill file duplicate via symlink

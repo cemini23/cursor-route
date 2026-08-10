@@ -5,7 +5,10 @@
   "type": "module",
   "license": "MIT",
   "bin": {
-    "cursor-route": "./bin/cursor-route"
+    "cursor-route": "./bin/cursor-route.js"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "files": [
     "bin",
@@ -21,10 +24,8 @@
     "start": "bun run src/cli.ts",
     "health": "bun run src/cli.ts health",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
-  },
-  "engines": {
-    "node": ">=20"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "bun test && bun run typecheck"
   },
   "keywords": [
     "cursor",
