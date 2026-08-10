@@ -9,7 +9,7 @@
  *                            under bun, which snapshots env for child processes)
  */
 import { describe, expect, test, afterAll } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync, readdirSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync, readdirSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Job } from "./jobs.ts";
@@ -22,6 +22,7 @@ const shimLog = join(tmp, "shim.log");
 process.env.CURSOR_ROUTE_JOBS_DIR = jobsDir;
 process.env.CURSOR_ROUTE_MAX_JOBS = "2";
 
+mkdirSync(jobsDir, { recursive: true });
 mkdirSync(shimDir, { recursive: true });
 
 function writeShim(name: string): void {
@@ -152,10 +153,12 @@ describe("fake-worker integration (headless, no tmux)", () => {
       } finally {
         delete process.env.FAKE_WORKER_SLEEP;
         // Cleanup any running jobs so the tmpdir can be removed.
-        for (const f of readdirSync(jobsDir)) {
-          if (!f.endsWith(".json")) continue;
-          const job = readJob(f.replace(/\.json$/, ""));
-          if (job && (job.status === "running" || job.status === "pending")) killJob(job.id);
+        if (existsSync(jobsDir)) {
+          for (const f of readdirSync(jobsDir)) {
+            if (!f.endsWith(".json")) continue;
+            const job = readJob(f.replace(/\.json$/, ""));
+            if (job && (job.status === "running" || job.status === "pending")) killJob(job.id);
+          }
         }
       }
     },

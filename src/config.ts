@@ -17,10 +17,17 @@ function maxConcurrentJobsFromEnv(): number {
   return 50;
 }
 
+/**
+ * Live getters for env-derived paths/limits so tests can set
+ * CURSOR_ROUTE_JOBS_DIR / CURSOR_ROUTE_MAX_JOBS before exercising jobs
+ * even if another module imported config earlier.
+ */
 export const config = {
   product: "cursor-route",
   version: "0.1.4",
-  jobsDir: defaultJobsDir(),
+  get jobsDir(): string {
+    return defaultJobsDir();
+  },
   tmuxPrefix: "cursor-route",
   defaultWorker: "grok" as WorkerKind,
   /** Lane → default worker (Cemini /route public core). */
@@ -30,7 +37,9 @@ export const config = {
   },
   jobsListLimit: 20,
   /** Max simultaneously active (running|pending) jobs. Override: CURSOR_ROUTE_MAX_JOBS. */
-  maxConcurrentJobs: maxConcurrentJobsFromEnv(),
+  get maxConcurrentJobs(): number {
+    return maxConcurrentJobsFromEnv();
+  },
 };
 
 export function sessionName(jobId: string): string {
