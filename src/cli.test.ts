@@ -4,6 +4,7 @@ import { config } from "./config.ts";
 import { shellQuote, newJobId } from "./util.ts";
 import { runHealth } from "./health.ts";
 import { looksLikeSecretMaterial } from "./secrets.ts";
+import { isDeepSeekRouted } from "./adapters/claude-ds.ts";
 
 describe("resolveWorker", () => {
   test("lane mid → claude-ds", () => {
@@ -41,6 +42,19 @@ describe("secrets", () => {
   });
   test("blocks ghp_ material", () => {
     expect(looksLikeSecretMaterial("ghp_abcdefghijklmnopqrstuvwx")).toBe(true);
+  });
+});
+
+describe("deepseek routing", () => {
+  test("detects deepseek base url", () => {
+    const prev = process.env.ANTHROPIC_BASE_URL;
+    process.env.ANTHROPIC_BASE_URL = "https://api.deepseek.com/anthropic";
+    try {
+      expect(isDeepSeekRouted()).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env.ANTHROPIC_BASE_URL;
+      else process.env.ANTHROPIC_BASE_URL = prev;
+    }
   });
 });
 
