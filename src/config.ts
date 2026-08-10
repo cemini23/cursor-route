@@ -10,7 +10,7 @@ export const LANES: Lane[] = ["mid", "hard"];
 
 export const config = {
   product: "cursor-route",
-  version: "0.1.2",
+  version: "0.1.3",
   jobsDir: defaultJobsDir(),
   tmuxPrefix: "cursor-route",
   defaultWorker: "grok" as WorkerKind,

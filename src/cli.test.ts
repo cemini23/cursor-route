@@ -85,16 +85,13 @@ describe("health", () => {
     expect(r.checks.some((c) => c.name === "cursor_cli")).toBe(true);
   });
 
-  test("relaxed env can pass without tmux", () => {
+  test("relaxed env can pass without workers", () => {
     const prev = process.env.CURSOR_ROUTE_RELAXED;
     process.env.CURSOR_ROUTE_RELAXED = "1";
     try {
       const r = runHealth();
-      const tmux = r.checks.find((c) => c.name === "tmux");
-      if (tmux && !tmux.ok) {
-        expect(r.ok).toBe(true);
-        expect(r.checks.some((c) => c.name === "relaxed")).toBe(true);
-      }
+      expect(r.ok).toBe(true);
+      expect(r.checks.some((c) => c.name === "relaxed")).toBe(true);
     } finally {
       if (prev === undefined) delete process.env.CURSOR_ROUTE_RELAXED;
       else process.env.CURSOR_ROUTE_RELAXED = prev;

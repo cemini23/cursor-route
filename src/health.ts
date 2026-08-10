@@ -71,18 +71,20 @@ export function runHealth(): HealthReport {
       : "optional — Cursor CLI agent not on PATH (skill-only supervisor is fine for v0)",
   });
 
-  // At least one worker must be healthy; tmux is hard-required for attach/send product path.
-  // Set CURSOR_ROUTE_RELAXED=1 to pass health without tmux (headless/--no-tmux CI).
+  // At least one worker must be healthy for a green health gate.
+  // CURSOR_ROUTE_RELAXED=1: pass without tmux and without workers (CI / infra smoke).
   const workerOk = checks.some((c) => c.name.startsWith("worker:") && c.ok);
   const relaxed = process.env.CURSOR_ROUTE_RELAXED === "1";
   const hardOk = (tmuxOk || relaxed) && (bunOk || nodeOk) && scriptOk;
-  const ok = hardOk && workerOk;
+  const ok = hardOk && (workerOk || relaxed);
 
-  if (relaxed && !tmuxOk) {
+  if (relaxed) {
     checks.push({
       name: "relaxed",
       ok: true,
-      detail: "CURSOR_ROUTE_RELAXED=1 — tmux not required (headless only)",
+      detail: workerOk
+        ? "CURSOR_ROUTE_RELAXED=1 — tmux optional (headless OK)"
+        : "CURSOR_ROUTE_RELAXED=1 — tmux/workers optional (CI / infra smoke)",
     });
   }
 

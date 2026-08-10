@@ -56,7 +56,7 @@ grok login                 # if using Grok
 # configure claude-ds — see DeepSeek setup below
 
 cursor-route health
-# without tmux (CI / headless):
+# without tmux / workers (CI / headless infra smoke):
 CURSOR_ROUTE_RELAXED=1 cursor-route health
 ```
 
@@ -141,19 +141,47 @@ This is **not** inside a git clone of this repo.
 - See [SECURITY.md](./SECURITY.md)
 - Local orchestration only — no LIVE Discord / trading egress demos
 
-## Also from Cemini
+## Related
 
-- [Atto](https://youratto.com) — genealogy / archival agents  
-- [GuruWatcher](https://guruwatcher.com) — alert workflows  
-- Cemini research & trading tooling (private)
+- Newsletter: [Outlier Weekly](https://outlierweekly.substack.com)
+- YouTube: [@Cemini23](https://www.youtube.com/@Cemini23)
+- Agent meta-wiki: [cemini-claude-code-CCC](https://github.com/cemini23/cemini-claude-code-CCC)
+- Products: [Atto](https://youratto.com) · [GuruWatcher](https://guruwatcher.com)
+- Agent toolkit: [vet](https://github.com/cemini23/vet) · [wikilint](https://github.com/cemini23/wikilint) · [phase0](https://github.com/cemini23/phase0) · [agent-toolkit-demo](https://github.com/cemini23/agent-toolkit-demo) · [ara-schema](https://github.com/cemini23/ara-schema) · [cursor-audit](https://github.com/cemini23/agent-toolkit-demo/tree/main/skills/cursor-audit) · [super-audit](https://github.com/cemini23/agent-toolkit-demo/tree/main/skills/super-audit)
+- Public wikis: [Gambling](https://github.com/cemini23/Gambling-wiki) · [Game Dev](https://github.com/cemini23/Game-Dev-wiki) · [SEO/GEO](https://github.com/cemini23/SEO-GEO-B-M-Wiki) · [Cybersecurity](https://github.com/cemini23/Cybersecurity-wiki) · [3D Printing](https://github.com/cemini23/3D-Printing-Wiki) · [Image Gen](https://github.com/cemini23/uncensored-image-gen-wiki)
+- Trading: [world-cup-bot](https://github.com/cemini23/world-cup-bot)
+- Donation wallets (canonical): [SUPPORT.md](SUPPORT.md)
+
+## Support
+
+Thank you for your support — stars, issues, shares, and tips all help keep this CLI and the broader Cemini open-research stack alive.
+
+If you’d like to tip, use the **donation-only** addresses below (not trading or production wallets). Prefer following the work? These are the best places to start:
+
+| Project | Link |
+|---------|------|
+| **Outlier Weekly** (methodology newsletter) | [outlierweekly.substack.com](https://outlierweekly.substack.com) |
+| **Atto** — organize Italian family documents on your computer | [youratto.com](https://youratto.com) |
+| **GuruWatcher** — Discord alerts for your newsletter’s price levels | [guruwatcher.com](https://guruwatcher.com) |
+| **YouTube** | [@Cemini23](https://www.youtube.com/@Cemini23) |
+
+| Chain family | Address |
+|--------------|---------|
+| **EVM** (Ethereum, Polygon, Base, Arbitrum, …) | `0x444C5C2eC439E0382aa5a17F70313c536BcC5D58` |
+| **Solana / SVM** | `J4zNn4hK9jTrKBFY8sbAGJHLoZvXvQf4B9pQSbSrocZE` |
+| **Polymarket** (referral) | [polymarket.com/?r=Cemini23](https://polymarket.com/?r=Cemini23) |
+
+Full wallet note: [SUPPORT.md](SUPPORT.md) · canon also in [CCC SUPPORT.md](https://github.com/cemini23/cemini-claude-code-CCC/blob/main/SUPPORT.md).
+
+We’re grateful you’re here. Thank you for your support.
 
 ## License
 
-MIT © Cemini
+MIT © Cemini — see [LICENSE](LICENSE).
 
 ## Roadmap (explicitly later)
 
-- npm publish + Homebrew tap  
+- Homebrew tap  
 - Native DeepSeek harness adapter  
 - Codebase map injection (`--map`)  
 - Cursor CLI `agent` as alternate supervisor  

@@ -55,7 +55,7 @@ Start options:
 Env:
   CURSOR_ROUTE_ASK=1                 Opt out of always-approve
   CURSOR_ROUTE_JOBS_DIR              Override jobs dir (default: ~/.local/share/cursor-route/jobs)
-  CURSOR_ROUTE_RELAXED=1             health OK without tmux (headless CI)
+  CURSOR_ROUTE_RELAXED=1             health OK without tmux/workers (CI / infra smoke)
   CURSOR_ROUTE_ALLOW_ANTHROPIC=1     Allow mid-lane on Anthropic Claude (expensive; not default)
 `);
   process.exit(exitCode);
