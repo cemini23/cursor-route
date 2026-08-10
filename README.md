@@ -46,7 +46,7 @@ Exact dollars vary — the point is **reuse subscriptions you already have**.
 ```bash
 # Prerequisites
 brew install tmux          # or build tmux into ~/.local
-# Bun optional — Node 20+ works via pinned tsx
+# Bun or Node 20+ — npm package ships compiled dist/ (Node runs it directly)
 
 # Preferred install
 npm i -g cursor-route
@@ -140,6 +140,23 @@ This is **not** inside a git clone of this repo.
 - No secrets in prompts (CLI soft-refuses common key patterns)
 - See [SECURITY.md](./SECURITY.md)
 - Local orchestration only — no LIVE Discord / trading egress demos
+
+## FAQ
+
+**What is cursor-route?**  
+cursor-route is a public MIT CLI and Cursor skill that runs parallel coding workers in tmux while Cursor remains the planner. DeepSeek handles the mid lane, and Grok CLI handles the hard lane.
+
+**How is this different from Codex orchestrator?**  
+It uses the familiar strategist and worker-pane shape, but it is not a Codex clone. cursor-route uses Cursor as the planner and DeepSeek plus Grok CLI as workers. Codex is not required.
+
+**Does mid lane use Anthropic Claude?**  
+No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` and a DeepSeek key in `ANTHROPIC_AUTH_TOKEN`.
+
+**How do I install?**  
+Run `npm i -g cursor-route`, install tmux if needed, then run `cursor-route health`. The package is available at https://www.npmjs.com/package/cursor-route, and the source is at https://github.com/cemini23/cursor-route.
+
+**Is it free?**  
+The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you.
 
 ## Related
 

@@ -22,6 +22,7 @@ Do **not** open a public issue for credential leaks or RCE-class bugs.
 ## Supply chain
 
 - Declared runtime npm dependencies: **none**. System needs: Node ≥20 or Bun, `tmux`, and worker CLIs (Grok / claude-ds).
-- On Node-only hosts (no Bun), the bin shim and completion hook may invoke **pinned** `npx --yes tsx@4.19.4` once to run TypeScript sources. Prefer Bun for offline / air-gapped use, or set PATH so `bun` is available.
+- The npm package ships a compiled `dist/` (plain JS, no loader). The bin shim and the completion hook run the compiled JS via `node`; there is **no network fetch of `tsx` on the happy path**.
+- Running from a git clone without a build uses Bun to execute `src/` directly (Bun runs TypeScript natively) — also offline-friendly.
 - Review `package.json` before upgrading.
 - Prefer pinned git tags for production installs.

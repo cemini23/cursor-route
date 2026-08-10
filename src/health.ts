@@ -32,7 +32,7 @@ export function runHealth(): HealthReport {
   checks.push({
     name: "runtime",
     ok: bunOk || nodeOk,
-    detail: bunOk ? "bun ok" : nodeOk ? "node ok (tsx via npx for TS)" : "need bun or node 20+",
+    detail: bunOk ? "bun ok" : nodeOk ? "node ok (compiled dist)" : "need bun or node 20+",
   });
 
   const scriptOk = (() => {

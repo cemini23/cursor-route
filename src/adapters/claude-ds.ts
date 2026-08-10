@@ -75,6 +75,13 @@ export function isDeepSeekRouted(): boolean {
 }
 
 function resolveClaudeDs(): { binary: string; mode: string } | null {
+  // Env override lets tests pin a fake claude-ds (and power users pick a specific binary).
+  if (process.env.CURSOR_ROUTE_CLAUDE_DS_BIN) {
+    return {
+      binary: process.env.CURSOR_ROUTE_CLAUDE_DS_BIN,
+      mode: "claude-ds (CURSOR_ROUTE_CLAUDE_DS_BIN override)",
+    };
+  }
   for (const c of [
     { cmd: "claude-ds", mode: "claude-ds (DeepSeek shim)" },
     { cmd: "deepseek-claude", mode: "deepseek-claude" },

@@ -1,5 +1,5 @@
 claude-ds - DeepSeek Claude Code (model=deepseek-v4-flash)
 Install: ~/.deepseek-claude
-PromptFile: ~/.cursor-route/jobs/e7567d1f.prompt
+PromptFile: ~/.local/share/cursor-route/jobs/e7567d1f.prompt
 WorkDir: ~/Projects/cursor-route
 CURSOR_ROUTE_SMOKE_OK

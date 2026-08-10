@@ -1,17 +1,22 @@
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { existsSync } from "node:fs";
 import { commandExists, shellQuote } from "./util.ts";
 
 /**
- * Resolve how to re-invoke TypeScript helpers (mark-complete) from shell hooks.
- * Prefer bun; else pinned npx tsx — never bare network-unpinned without note.
+ * Resolve how to re-invoke the completion hook (mark-complete) from shell hooks.
+ * Prefer compiled dist via node (no loader); else Bun on src. No npx/tsx on the
+ * happy path — surface a clear failure if neither is available.
  */
 export function markCompleteInvoker(scriptPath: string): string {
+  const compiled = scriptPath.replace(/\.ts$/, ".js");
+  if (existsSync(compiled)) {
+    return `node ${shellQuote(compiled)}`;
+  }
   if (commandExists("bun")) {
     return `bun ${shellQuote(scriptPath)}`;
   }
-  // Pin tsx major for supply-chain predictability on Node-only hosts
-  return `npx --yes tsx@4.19.4 ${shellQuote(scriptPath)}`;
+  return `sh -c 'echo "cursor-route: completion hook needs a compiled dist or Bun (run bun run build)" >&2; exit 1'`;
 }
 
 /** XDG-ish default away from git-clone install dir (~/.cursor-route). */

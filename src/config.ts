@@ -8,9 +8,18 @@ export type Lane = "mid" | "hard";
 export const WORKERS: WorkerKind[] = ["grok", "claude-ds"];
 export const LANES: Lane[] = ["mid", "hard"];
 
+function maxConcurrentJobsFromEnv(): number {
+  const raw = process.env.CURSOR_ROUTE_MAX_JOBS;
+  if (raw) {
+    const n = Number(raw);
+    if (Number.isInteger(n) && n > 0) return n;
+  }
+  return 50;
+}
+
 export const config = {
   product: "cursor-route",
-  version: "0.1.3",
+  version: "0.1.4",
   jobsDir: defaultJobsDir(),
   tmuxPrefix: "cursor-route",
   defaultWorker: "grok" as WorkerKind,
@@ -20,6 +29,8 @@ export const config = {
     hard: "grok" as WorkerKind,
   },
   jobsListLimit: 20,
+  /** Max simultaneously active (running|pending) jobs. Override: CURSOR_ROUTE_MAX_JOBS. */
+  maxConcurrentJobs: maxConcurrentJobsFromEnv(),
 };
 
 export function sessionName(jobId: string): string {

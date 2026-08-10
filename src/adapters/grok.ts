@@ -3,6 +3,8 @@ import type { Adapter, WorkerHealth } from "./types.ts";
 import { shellQuote } from "../util.ts";
 
 function findGrok(): string | null {
+  // Env override lets tests pin a fake grok (and power users pick a specific binary).
+  if (process.env.CURSOR_ROUTE_GROK_BIN) return process.env.CURSOR_ROUTE_GROK_BIN;
   try {
     return (
       execSync("command -v grok", {

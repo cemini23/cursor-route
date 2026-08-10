@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cursor-route — thin launcher (Bun preferred, Node+tsx fallback)
+# cursor-route — thin launcher (compiled dist via node, else Bun on src)
 set -euo pipefail
 SOURCE="${BASH_SOURCE[0]}"
 while [ -L "$SOURCE" ]; do
@@ -9,16 +9,14 @@ while [ -L "$SOURCE" ]; do
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-CLI="$ROOT/src/cli.ts"
+
+if [ -f "$ROOT/dist/cli.js" ] && command -v node >/dev/null 2>&1; then
+  exec node "$ROOT/dist/cli.js" "$@"
+fi
 
 if command -v bun >/dev/null 2>&1; then
-  exec bun "$CLI" "$@"
+  exec bun "$ROOT/src/cli.ts" "$@"
 fi
 
-if command -v npx >/dev/null 2>&1; then
-  # Pin tsx for supply-chain predictability (no floating --yes latest)
-  exec npx --yes tsx@4.19.4 "$CLI" "$@"
-fi
-
-echo "cursor-route: need Bun (https://bun.sh) or Node 20+ with npx" >&2
+echo "cursor-route: no compiled build (run 'bun run build') and no Bun — need Node 20+ or Bun (https://bun.sh)" >&2
 exit 127

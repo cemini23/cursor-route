@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
- * npm bin entry — prefers Bun, falls back to pinned tsx.
+ * npm bin redirect — prefers compiled dist (node), else Bun on src.
+ * The shell launcher (bin/cursor-route) is the primary npm bin entry;
+ * this file keeps direct `node bin/cursor-route.js` working the same way.
  */
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const cli = join(root, "src", "cli.ts");
 const args = process.argv.slice(2);
 
 function run(cmd, cmdArgs) {
@@ -16,11 +18,12 @@ function run(cmd, cmdArgs) {
   process.exit(r.status ?? 1);
 }
 
-const bun = spawnSync("bun", ["--version"], { encoding: "utf8" });
-if (bun.status === 0) {
-  run("bun", [cli, ...args]);
+function main() {
+  const distCli = join(root, "dist", "cli.js");
+  if (existsSync(distCli) && run("node", [distCli, ...args]) !== null) return;
+  if (run("bun", [join(root, "src", "cli.ts"), ...args]) !== null) return;
+  console.error("cursor-route: no compiled build (run 'bun run build') and no Bun — need Node 20+ or Bun (https://bun.sh)");
+  process.exit(127);
 }
 
-run("npx", ["--yes", "tsx@4.19.4", cli, ...args]);
-console.error("cursor-route: need Bun (https://bun.sh) or Node 20+ with npx");
-process.exit(127);
+main();

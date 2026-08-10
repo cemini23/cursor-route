@@ -98,9 +98,20 @@ export function writeJob(job: Job): void {
 function pidAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
-    return true;
   } catch {
     return false;
+  }
+  // kill(pid, 0) stays true for zombies, and terminatePid's sync waits block the
+  // event loop so children can sit unreaped as zombies — a zombie is not a worker.
+  try {
+    const r = spawnSync("ps", ["-o", "state=", "-p", String(pid)], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const state = (r.stdout || "").trim();
+    return state !== "" && !state.startsWith("Z");
+  } catch {
+    return true;
   }
 }
 
@@ -169,6 +180,25 @@ export function refreshStatus(job: Job): Job {
   return job;
 }
 
+export function countActiveJobs(): number {
+  ensureJobsDir();
+  let n = 0;
+  for (const f of readdirSync(config.jobsDir)) {
+    if (!f.endsWith(".json")) continue;
+    const id = f.replace(/\.json$/, "");
+    if (!JOB_ID_RE.test(id)) continue;
+    try {
+      const job = JSON.parse(readFileSync(join(config.jobsDir, f), "utf8")) as Job;
+      if (job?.schema === "cursor-route.job.v1" && (job.status === "running" || job.status === "pending")) {
+        n++;
+      }
+    } catch {
+      /* skip */
+    }
+  }
+  return n;
+}
+
 export function listJobs(limit = config.jobsListLimit): Job[] {
   ensureJobsDir();
   const files = readdirSync(config.jobsDir).filter(
@@ -216,6 +246,16 @@ export function startJob(opts: StartOptions): {
     opts.alwaysApprove !== false &&
     process.env.CURSOR_ROUTE_ASK !== "1" &&
     !(worker === "claude-ds" && process.env.CLAUDE_DS_ASK === "1");
+
+  if (!opts.dryRun) {
+    const active = countActiveJobs();
+    if (active >= config.maxConcurrentJobs) {
+      return {
+        ok: false,
+        error: `Too many active jobs (${active} >= ${config.maxConcurrentJobs}) — wait for jobs to finish or raise CURSOR_ROUTE_MAX_JOBS`,
+      };
+    }
+  }
 
   // Preflight: requested worker must be healthy
   const adapter = getAdapter(worker);
