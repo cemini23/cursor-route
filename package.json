@@ -11,8 +11,10 @@
     "bin",
     "src",
     "skills",
+    "docs",
     "LICENSE",
     "SECURITY.md",
+    "CONTRIBUTING.md",
     "README.md"
   ],
   "scripts": {

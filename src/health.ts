@@ -58,10 +58,33 @@ export function runHealth(): HealthReport {
     });
   }
 
-  // At least one worker must be healthy for "soft ok"; tmux is hard-required.
+  // Optional supervisor probe (v0 skill-only; Cursor CLI agent is informational)
+  const agentBin =
+    (commandExists("agent") && "agent") ||
+    (commandExists("cursor-agent") && "cursor-agent") ||
+    null;
+  checks.push({
+    name: "cursor_cli",
+    ok: true, // informational — does not fail health
+    detail: agentBin
+      ? `optional ok (${agentBin} on PATH) — v0 supervisor is Cursor skill, not CLI`
+      : "optional — Cursor CLI agent not on PATH (skill-only supervisor is fine for v0)",
+  });
+
+  // At least one worker must be healthy; tmux is hard-required for attach/send product path.
+  // Set CURSOR_ROUTE_RELAXED=1 to pass health without tmux (headless/--no-tmux CI).
   const workerOk = checks.some((c) => c.name.startsWith("worker:") && c.ok);
-  const hardOk = tmuxOk && (bunOk || nodeOk) && scriptOk;
+  const relaxed = process.env.CURSOR_ROUTE_RELAXED === "1";
+  const hardOk = (tmuxOk || relaxed) && (bunOk || nodeOk) && scriptOk;
   const ok = hardOk && workerOk;
+
+  if (relaxed && !tmuxOk) {
+    checks.push({
+      name: "relaxed",
+      ok: true,
+      detail: "CURSOR_ROUTE_RELAXED=1 — tmux not required (headless only)",
+    });
+  }
 
   checks.push({
     name: "jobs_dir",
