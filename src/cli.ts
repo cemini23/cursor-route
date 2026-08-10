@@ -167,7 +167,11 @@ async function main() {
     } else {
       console.log(`started ${result.job.id} (${result.job.worker})`);
       console.log(`session: ${result.job.tmuxSession}`);
-      console.log(`attach:  ${attachHint(result.job.id)}`);
+      if (String(result.job.tmuxSession).startsWith("headless-")) {
+        console.log(`mode:    headless (--no-tmux); use capture/status (no attach/send)`);
+      } else {
+        console.log(`attach:  ${attachHint(result.job.id)}`);
+      }
       console.log(`capture: cursor-route capture ${result.job.id}`);
     }
     return;
