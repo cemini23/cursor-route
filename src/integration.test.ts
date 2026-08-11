@@ -134,6 +134,13 @@ describe("fake-worker integration (headless, no tmux)", () => {
     20000,
   );
 
+  test("openrouter worker without key refuses start (preflight)", () => {
+    delete process.env.OPENROUTER_API_KEY;
+    const r = startJob({ prompt: "say ok", worker: "openrouter", noTmux: true });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("openrouter");
+  });
+
   test(
     "concurrent limit: refuses start once active jobs reach CURSOR_ROUTE_MAX_JOBS",
     async () => {

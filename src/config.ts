@@ -2,11 +2,21 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { defaultJobsDir } from "./runtime.ts";
 
-export type WorkerKind = "grok" | "claude-ds";
-export type Lane = "mid" | "hard";
+export type WorkerKind = "grok" | "claude-ds" | "openrouter";
+export type Lane = "easy" | "mid" | "hard";
 
-export const WORKERS: WorkerKind[] = ["grok", "claude-ds"];
-export const LANES: Lane[] = ["mid", "hard"];
+export const WORKERS: WorkerKind[] = ["grok", "claude-ds", "openrouter"];
+export const LANES: Lane[] = ["easy", "mid", "hard"];
+
+/** OpenRouter model for the easy lane (env CURSOR_ROUTE_OPENROUTER_MODEL). */
+export function openRouterModel(): string {
+  return process.env.CURSOR_ROUTE_OPENROUTER_MODEL || "openrouter/free";
+}
+
+/** OpenRouter API base URL (env OPENROUTER_BASE_URL). */
+export function openRouterBaseUrl(): string {
+  return process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
+}
 
 function maxConcurrentJobsFromEnv(): number {
   const raw = process.env.CURSOR_ROUTE_MAX_JOBS;
@@ -24,7 +34,7 @@ function maxConcurrentJobsFromEnv(): number {
  */
 export const config = {
   product: "cursor-route",
-  version: "0.1.4",
+  version: "0.1.5",
   get jobsDir(): string {
     return defaultJobsDir();
   },
@@ -32,6 +42,7 @@ export const config = {
   defaultWorker: "grok" as WorkerKind,
   /** Lane → default worker (Cemini /route public core). */
   laneWorkers: {
+    easy: "openrouter" as WorkerKind,
     mid: "claude-ds" as WorkerKind,
     hard: "grok" as WorkerKind,
   },

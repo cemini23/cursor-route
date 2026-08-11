@@ -4,16 +4,17 @@ Simulated capture output for README / tweet assets — replace with a real GIF o
 
 ```
 $ cursor-route --version
-0.1.4
+0.1.5
 
 $ cursor-route health
-cursor-route v0.1.4
+cursor-route v0.1.5
 health: OK
   ✓ tmux
   ✓ runtime          bun ok
   ✓ script(1)
   ✓ worker:grok
   ✓ worker:claude-ds
+  ✓ worker:openrouter
   ✓ jobs_dir         ~/.local/share/cursor-route/jobs
 
 $ cursor-route start --lane mid "Add a failing test then make it pass"

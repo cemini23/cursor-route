@@ -2,10 +2,12 @@ import type { WorkerKind } from "../config.ts";
 import type { Adapter } from "./types.ts";
 import { grokAdapter } from "./grok.ts";
 import { claudeDsAdapter } from "./claude-ds.ts";
+import { openRouterAdapter } from "./openrouter.ts";
 
 const registry: Record<WorkerKind, Adapter> = {
   grok: grokAdapter,
   "claude-ds": claudeDsAdapter,
+  openrouter: openRouterAdapter,
 };
 
 export function getAdapter(worker: WorkerKind): Adapter {

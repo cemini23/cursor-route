@@ -7,6 +7,9 @@ import { looksLikeSecretMaterial, redactSecrets } from "./secrets.ts";
 import { isDeepSeekRouted, isDeepSeekBaseUrl } from "./adapters/claude-ds.ts";
 
 describe("resolveWorker", () => {
+  test("lane easy → openrouter", () => {
+    expect(resolveWorker({ prompt: "x", lane: "easy" })).toBe("openrouter");
+  });
   test("lane mid → claude-ds", () => {
     expect(resolveWorker({ prompt: "x", lane: "mid" })).toBe("claude-ds");
   });
@@ -16,6 +19,9 @@ describe("resolveWorker", () => {
   test("explicit worker wins", () => {
     expect(resolveWorker({ prompt: "x", lane: "hard", worker: "claude-ds" })).toBe(
       "claude-ds",
+    );
+    expect(resolveWorker({ prompt: "x", lane: "mid", worker: "openrouter" })).toBe(
+      "openrouter",
     );
   });
   test("default worker", () => {

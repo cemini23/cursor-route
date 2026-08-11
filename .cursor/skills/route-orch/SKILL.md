@@ -1,10 +1,11 @@
 ---
 name: route-orch
 description: >-
-  Delegate coding work from Cursor to parallel Grok CLI / claude-ds (DeepSeek)
-  workers via cursor-route. Use when the user says /route-orch, spawn workers,
-  parallel agents with cursor-route, or explicitly asks to outsource
-  implementation to Grok/DeepSeek panes — not for private Cemini /route.
+  Delegate coding work from Cursor to parallel Grok CLI / claude-ds (DeepSeek) /
+  OpenRouter (easy lane) workers via cursor-route. Use when the user says
+  /route-orch, spawn workers, parallel agents with cursor-route, or explicitly
+  asks to outsource implementation to Grok/DeepSeek panes — not for private
+  Cemini /route.
 ---
 
 # route-orch (cursor-route)
@@ -23,10 +24,11 @@ You are the **orchestrator**. Do **not** implement bulk code in this Cursor sess
 
 | Lane | Worker | Use when |
 |------|--------|----------|
+| `easy` | `openrouter` (OpenRouter free models) | Wording / drafts — non-secret prompts only |
 | `mid` | `claude-ds` (DeepSeek via Claude Code harness) | Standard implement / refactor |
 | `hard` | `grok` | Premium plan in Cursor → Grok implement |
 
-Easy/OpenRouter is **not** in v0 — keep secrets off free models.
+Free OpenRouter models may log prompts — keep secrets off the easy lane (the CLI refuse gate still applies).
 
 ## Workflow
 
@@ -45,7 +47,7 @@ EOF
 )"
 ```
 
-Or `--worker grok` / `--worker claude-ds`. Use `--no-tmux` only when tmux is unavailable.
+Or `--worker grok` / `--worker claude-ds` / `--worker openrouter` (or `--lane easy`). Use `--no-tmux` only when tmux is unavailable.
 
 4. Monitor: `cursor-route jobs --json` · `cursor-route capture <id>` · `cursor-route send <id> "…"` (tmux only).
 5. Summarize worker results with **verify evidence** — no status-only “done”. If verify fails, `send` a correction or spawn a follow-up — do not invent success.

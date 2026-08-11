@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * cursor-route CLI — Cursor brain, Grok + DeepSeek workers in tmux.
+ * cursor-route CLI — Cursor brain, Grok + DeepSeek + OpenRouter (easy) workers in tmux.
  */
 import { readFileSync, existsSync, realpathSync, statSync } from "node:fs";
 import { resolve, basename } from "node:path";
@@ -27,7 +27,7 @@ import { looksLikeSecretMaterial, redactSecrets } from "./secrets.ts";
 function usage(exitCode = 0): never {
   console.log(`cursor-route v${config.version}
 
-Cursor stays the brain. Grok CLI + DeepSeek (claude-ds) are the parallel army.
+Cursor stays the brain. Grok CLI + DeepSeek (claude-ds) + OpenRouter (easy) are the parallel army.
 
 Usage:
   cursor-route --version
@@ -44,13 +44,13 @@ Usage:
   cursor-route clean [--days N]
 
 Start options:
-  --worker <grok|claude-ds>   Worker adapter (default: grok)
-  --lane <mid|hard>           Lane → worker (mid=claude-ds, hard=grok)
-  --dir <path>                Working directory (default: cwd)
-  --ask                       Disable always-approve for this job
-  --dry-run                   Print launch command; do not start
-  --no-tmux                   Headless background process (no attach/send)
-  --json                      JSON output where supported
+  --worker <grok|claude-ds|openrouter>  Worker adapter (default: grok)
+  --lane <easy|mid|hard>                Lane → worker (easy=openrouter, mid=claude-ds, hard=grok)
+  --dir <path>                          Working directory (default: cwd)
+  --ask                                 Disable always-approve for this job
+  --dry-run                             Print launch command; do not start
+  --no-tmux                             Headless background process (no attach/send)
+  --json                                JSON output where supported
 
 Env:
   CURSOR_ROUTE_ASK=1                 Opt out of always-approve
@@ -60,6 +60,9 @@ Env:
   CURSOR_ROUTE_ALLOW_ANTHROPIC=1     Allow mid-lane on Anthropic Claude (expensive; not default)
   CURSOR_ROUTE_GROK_BIN              Override the grok binary path (tests / power users)
   CURSOR_ROUTE_CLAUDE_DS_BIN         Override the claude-ds binary path (tests / power users)
+  OPENROUTER_API_KEY                 OpenRouter key (required for --worker openrouter / --lane easy)
+  CURSOR_ROUTE_OPENROUTER_MODEL      OpenRouter model (default: openrouter/free)
+  OPENROUTER_BASE_URL                OpenRouter API base (default: https://openrouter.ai/api/v1)
 `);
   process.exit(exitCode);
 }

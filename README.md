@@ -1,6 +1,6 @@
 # cursor-route
 
-**Cursor stays the brain. Grok CLI + DeepSeek (claude-ds) are the parallel army.**
+**Cursor stays the brain. Grok CLI + DeepSeek (claude-ds) + OpenRouter (easy) are the parallel army.**
 
 Lane-aware `/route` orchestration in tmux — not another multi-provider fleet, not a Codex clone.
 
@@ -17,7 +17,7 @@ cursor-route capture <jobId>
 |---------|-------|---------|------|
 | [codex-orchestrator](https://github.com/kingbootoshi/codex-orchestrator) | Claude Code | Codex | Viral tmux panes |
 | [CAO](https://github.com/awslabs/cli-agent-orchestrator) | Supervisor CLI | Many (incl. Cursor CLI) | Enterprise MCP + Web UI |
-| **cursor-route** | **Cursor Agent** | **Grok CLI + claude-ds** | Cost-aware lanes you already pay for |
+| **cursor-route** | **Cursor Agent** | **Grok CLI + claude-ds + OpenRouter (easy)** | Cost-aware lanes you already pay for |
 
 If you already live in Cursor, X Premium (Grok CLI), and DeepSeek — stop paying a third coding agent just to parallelize.
 
@@ -28,6 +28,7 @@ If you already live in Cursor, X Premium (Grok CLI), and DeepSeek — stop payin
 | Cursor | Premium plan | Plan / synthesize / verify (orchestrator) |
 | Grok CLI | X Premium | `--lane hard` implement |
 | DeepSeek via claude-ds | DeepSeek API / plan | `--lane mid` implement |
+| OpenRouter free models | OpenRouter API (free tier) | `--lane easy` wording/drafts — non-secret prompts only (see Security) |
 | Codex / extra Claude | Optional | Not required for v0 |
 
 Exact dollars vary — the point is **reuse subscriptions you already have**.
@@ -41,6 +42,7 @@ Exact dollars vary — the point is **reuse subscriptions you already have**.
 | [tmux](https://github.com/tmux/tmux) | Worker panes |
 | [Bun](https://bun.sh) *(or Node 20+)* | Runs the CLI |
 | [Grok CLI](https://x.ai/cli) and/or Claude Code + DeepSeek (`claude-ds`) | Workers |
+| OpenRouter API key (`OPENROUTER_API_KEY`) | Easy lane (`--lane easy` / `--worker openrouter`) |
 | `script(1)` | Job logs (macOS/Linux) |
 
 ```bash
@@ -54,6 +56,7 @@ npm i -g cursor-route
 # Auth workers
 grok login                 # if using Grok
 # configure claude-ds — see DeepSeek setup below
+export OPENROUTER_API_KEY=...   # if using the easy lane (see OpenRouter setup below)
 
 cursor-route health
 # without tmux / workers (CI / headless infra smoke):
@@ -98,6 +101,7 @@ Then say **`/route-orch`** or **spawn workers** in Cursor — the skill delegate
 
 | Lane | Worker | Intent |
 |------|--------|--------|
+| `easy` | `openrouter` | Wording / drafts on OpenRouter free models (non-secret prompts only — see Security) |
 | `mid` | `claude-ds` | Default implement on DeepSeek |
 | `hard` | `grok` | Hard implement on Grok CLI |
 
@@ -130,6 +134,25 @@ Persist the same vars under `~/.claude/settings.json` → `"env": { … }` if yo
 
 No DeepSeek yet? Use `--lane hard` / `--worker grok` (X Premium).
 
+## OpenRouter setup (the free easy lane)
+
+`--lane easy` / `--worker openrouter` sends wording/draft prompts to OpenRouter's
+free model route (`openrouter/free`). Get a key at [openrouter.ai/keys](https://openrouter.ai/keys).
+
+```bash
+export OPENROUTER_API_KEY=sk-or-v1-...        # from openrouter.ai/keys
+# optional:
+export CURSOR_ROUTE_OPENROUTER_MODEL=openrouter/free   # default
+export OPENROUTER_BASE_URL=https://openrouter.ai/api/v1  # default
+
+cursor-route health          # worker:openrouter should be ✓
+cursor-route start --lane easy "Rewrite this FAQ answer in 3 sentences"
+```
+
+**Non-secret prompts only:** free OpenRouter models may log prompts, so the easy lane is for
+**wording/drafts without credentials**. The same refuse gate as every lane blocks
+key-shaped material in `start` / `send`, and the runner re-checks the prompt file.
+
 ## Jobs directory
 
 Jobs default to `~/.local/share/cursor-route/jobs` (override with `CURSOR_ROUTE_JOBS_DIR`).
@@ -144,7 +167,7 @@ This is **not** inside a git clone of this repo.
 ## FAQ
 
 **What is cursor-route?**  
-cursor-route is a public MIT CLI and Cursor skill that runs parallel coding workers in tmux while Cursor remains the planner. DeepSeek handles the mid lane, and Grok CLI handles the hard lane.
+cursor-route is a public MIT CLI and Cursor skill that runs parallel coding workers in tmux while Cursor remains the planner. DeepSeek handles the mid lane, Grok CLI handles the hard lane, and OpenRouter free models handle the easy lane for wording/drafts.
 
 **How is this different from Codex orchestrator?**  
 It uses the familiar strategist and worker-pane shape, but it is not a Codex clone. cursor-route uses Cursor as the planner and DeepSeek plus Grok CLI as workers. Codex is not required.
@@ -156,7 +179,7 @@ No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANT
 Run `npm i -g cursor-route`, install tmux if needed, then run `cursor-route health`. The package is available at https://www.npmjs.com/package/cursor-route, and the source is at https://github.com/cemini23/cursor-route.
 
 **Is it free?**  
-The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you.
+The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you. The easy lane can be free on OpenRouter's free-model route (`openrouter/free`).
 
 ## Related
 
@@ -202,5 +225,4 @@ MIT © Cemini — see [LICENSE](LICENSE).
 - Native DeepSeek harness adapter  
 - Codebase map injection (`--map`)  
 - Cursor CLI `agent` as alternate supervisor  
-- Web UI / CAO-style MCP supervisor  
-- OpenRouter easy lane (secrets-safe)
+- Web UI / CAO-style MCP supervisor
