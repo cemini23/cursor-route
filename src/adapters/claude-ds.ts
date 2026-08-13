@@ -3,6 +3,12 @@ import { readFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Adapter, WorkerHealth } from "./types.ts";
+import {
+  DS_MODEL_IDS,
+  type DsModelAlias,
+  config,
+  resolveDsModelAlias,
+} from "../config.ts";
 import { shellQuote } from "../util.ts";
 
 /**
@@ -114,22 +120,37 @@ function resolveClaudeDs(): { binary: string; mode: string } | null {
   return null;
 }
 
+function pickModelAlias(requested?: DsModelAlias): DsModelAlias {
+  if (requested) return requested;
+  // Env override for power users who already export ANTHROPIC_MODEL
+  const fromEnv = process.env.CURSOR_ROUTE_DS_MODEL || process.env.ANTHROPIC_MODEL;
+  if (fromEnv) {
+    try {
+      return resolveDsModelAlias(fromEnv);
+    } catch {
+      /* fall through to default */
+    }
+  }
+  return config.defaultDsModel;
+}
+
 /**
  * Env that must reach stock `claude` for DeepSeek routing.
  * Passed via process/tmux env — never interpolated into the printed command.
  */
-function deepSeekWorkerEnv(): Record<string, string> | undefined {
+function deepSeekWorkerEnv(modelId: string): Record<string, string> | undefined {
   const base = resolvedDeepSeekBaseUrl();
   if (!base) return undefined;
-  const env: Record<string, string> = { ANTHROPIC_BASE_URL: base };
+  const env: Record<string, string> = {
+    ANTHROPIC_BASE_URL: base,
+    ANTHROPIC_MODEL: modelId,
+  };
   const token =
     process.env.ANTHROPIC_AUTH_TOKEN ||
     process.env.ANTHROPIC_API_KEY ||
     process.env.DEEPSEEK_API_KEY ||
     "";
   if (token) env.ANTHROPIC_AUTH_TOKEN = token;
-  const model = process.env.ANTHROPIC_MODEL;
-  if (model) env.ANTHROPIC_MODEL = model;
   return env;
 }
 
@@ -153,27 +174,33 @@ export const claudeDsAdapter: Adapter = {
       worker: "claude-ds",
       ok: true,
       binary: resolved.binary,
-      detail: `ok (${resolved.mode})`,
+      detail: `ok (${resolved.mode}; default model ${DS_MODEL_IDS[config.defaultDsModel]})`,
     };
   },
-  buildLaunch({ promptFile, cwd, alwaysApprove }) {
+  buildLaunch({ promptFile, cwd, alwaysApprove, model }) {
     const resolved = resolveClaudeDs();
     if (!resolved) {
       throw new Error("DeepSeek worker not available — run: cursor-route health");
     }
 
+    const alias = pickModelAlias(model);
+    const modelId = DS_MODEL_IDS[alias];
+
     const ask = process.env.CURSOR_ROUTE_ASK === "1" || process.env.CLAUDE_DS_ASK === "1";
     const skip = alwaysApprove && !ask;
     // Stock `claude` needs DeepSeek env injected into the worker process
     // (tmux panes may not inherit client env from a long-lived server).
-    const env =
-      resolved.mode.startsWith("claude → DeepSeek") ? deepSeekWorkerEnv() : undefined;
+    const env = resolved.mode.startsWith("claude → DeepSeek")
+      ? deepSeekWorkerEnv(modelId)
+      : undefined;
 
-    if (resolved.mode.startsWith("claude-ds")) {
+    if (resolved.mode.startsWith("claude-ds") || resolved.mode.startsWith("deepseek-claude")) {
       const parts = [
         shellQuote(resolved.binary),
         "-PromptFile",
         shellQuote(promptFile),
+        "-Model",
+        shellQuote(modelId),
       ];
       if (skip) parts.push("--dangerously-skip-permissions");
       return {
@@ -188,6 +215,8 @@ export const claudeDsAdapter: Adapter = {
       shellQuote(resolved.binary),
       "-p",
       `"$(cat ${shellQuote(promptFile)})"`,
+      "--model",
+      shellQuote(modelId),
     ];
     if (skip) parts.push("--dangerously-skip-permissions");
     return {

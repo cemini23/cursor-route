@@ -4,7 +4,15 @@
  */
 import { readFileSync, existsSync, realpathSync, statSync } from "node:fs";
 import { resolve, basename } from "node:path";
-import { config, WORKERS, LANES, type WorkerKind, type Lane } from "./config.ts";
+import {
+  config,
+  WORKERS,
+  LANES,
+  resolveDsModelAlias,
+  type WorkerKind,
+  type Lane,
+  type DsModelAlias,
+} from "./config.ts";
 import { runHealth, printHealth } from "./health.ts";
 import {
   startJob,
@@ -44,8 +52,9 @@ Usage:
   cursor-route clean [--days N]
 
 Start options:
-  --worker <grok|claude-ds|openrouter>  Worker adapter (default: grok)
+  --worker <grok|claude-ds|openrouter>  Worker adapter (default: grok; deepseek = reserved slot)
   --lane <easy|mid|hard>                Lane → worker (easy=openrouter, mid=claude-ds, hard=grok)
+  --model <flash|pro>                   Mid DeepSeek model (default: flash). Ignored by grok/openrouter
   --dir <path>                          Working directory (default: cwd)
   --ask                                 Disable always-approve for this job
   --dry-run                             Print launch command; do not start
@@ -58,6 +67,7 @@ Env:
   CURSOR_ROUTE_MAX_JOBS              Max active jobs (default: 50)
   CURSOR_ROUTE_RELAXED=1             health OK without tmux/workers (CI / infra smoke)
   CURSOR_ROUTE_ALLOW_ANTHROPIC=1     Allow mid-lane on Anthropic Claude (expensive; not default)
+  CURSOR_ROUTE_DS_MODEL              Default mid model flash|pro (overridden by --model)
   CURSOR_ROUTE_GROK_BIN              Override the grok binary path (tests / power users)
   CURSOR_ROUTE_CLAUDE_DS_BIN         Override the claude-ds binary path (tests / power users)
   OPENROUTER_API_KEY                 OpenRouter key (required for --worker openrouter / --lane easy)
@@ -152,6 +162,12 @@ function asLane(v: unknown): Lane | undefined {
   throw new Error(`Invalid --lane ${v}; expected ${LANES.join("|")}`);
 }
 
+function asDsModel(v: unknown): DsModelAlias | undefined {
+  if (v === undefined || v === true) return undefined;
+  if (typeof v !== "string") throw new Error(`Invalid --model; expected flash|pro`);
+  return resolveDsModelAlias(v);
+}
+
 function refuseSecrets(text: string, context: string): void {
   if (looksLikeSecretMaterial(text)) {
     console.error(
@@ -216,8 +232,16 @@ async function main() {
   if (cmd === "start") {
     requireStringFlag(f, "worker");
     requireStringFlag(f, "lane");
+    requireStringFlag(f, "model");
     const promptFile = requireStringFlag(f, "prompt-file");
     const dirFlag = requireStringFlag(f, "dir");
+    let model: DsModelAlias | undefined;
+    try {
+      model = asDsModel(f.model);
+    } catch (e) {
+      console.error((e as Error).message);
+      process.exit(2);
+    }
 
     let prompt = "";
     if (promptFile) {
@@ -255,6 +279,7 @@ async function main() {
       prompt,
       worker: asWorker(f.worker),
       lane: asLane(f.lane),
+      model,
       cwd,
       alwaysApprove: !f.ask,
       dryRun: Boolean(f.dryRun),
@@ -280,9 +305,11 @@ async function main() {
     } else if (result.dryRun) {
       console.log(`dry-run job ${result.job.id}`);
       console.log(`worker: ${result.job.worker}`);
+      if (result.job.model) console.log(`model:  ${result.job.model}`);
       console.log(`command: ${redactSecrets(result.command || "")}`);
     } else {
-      console.log(`started ${result.job.id} (${result.job.worker})`);
+      const modelNote = result.job.model ? `/${result.job.model}` : "";
+      console.log(`started ${result.job.id} (${result.job.worker}${modelNote})`);
       console.log(`session: ${result.job.tmuxSession}`);
       if (String(result.job.tmuxSession).startsWith("headless-")) {
         console.log(`mode:    headless (--no-tmux); use capture/status (no attach/send)`);

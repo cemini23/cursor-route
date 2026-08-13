@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { resolveWorker } from "./jobs.ts";
-import { config } from "./config.ts";
+import { config, resolveDsModelAlias } from "./config.ts";
 import { shellQuote, newJobId } from "./util.ts";
 import { runHealth } from "./health.ts";
 import { looksLikeSecretMaterial, redactSecrets } from "./secrets.ts";
-import { isDeepSeekRouted, isDeepSeekBaseUrl } from "./adapters/claude-ds.ts";
+import { isDeepSeekRouted, isDeepSeekBaseUrl, claudeDsAdapter } from "./adapters/claude-ds.ts";
+import { deepseekAdapter } from "./adapters/deepseek.ts";
 
 describe("resolveWorker", () => {
   test("lane easy → openrouter", () => {
@@ -26,6 +27,72 @@ describe("resolveWorker", () => {
   });
   test("default worker", () => {
     expect(resolveWorker({ prompt: "x" })).toBe(config.defaultWorker);
+  });
+});
+
+describe("resolveDsModelAlias", () => {
+  test("defaults to flash", () => {
+    expect(resolveDsModelAlias()).toBe("flash");
+    expect(resolveDsModelAlias("")).toBe("flash");
+  });
+  test("accepts aliases and full ids", () => {
+    expect(resolveDsModelAlias("flash")).toBe("flash");
+    expect(resolveDsModelAlias("pro")).toBe("pro");
+    expect(resolveDsModelAlias("deepseek-v4-flash")).toBe("flash");
+    expect(resolveDsModelAlias("deepseek-v4-pro")).toBe("pro");
+    expect(resolveDsModelAlias("deepseek-v4-pro[1m]")).toBe("pro");
+  });
+  test("rejects unknown", () => {
+    expect(() => resolveDsModelAlias("opus")).toThrow(/flash\|pro/);
+  });
+});
+
+describe("claude-ds -Model", () => {
+  test("shim path passes -Model deepseek-v4-flash by default", () => {
+    const prev = process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+    process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = "/tmp/fake-claude-ds";
+    try {
+      const plan = claudeDsAdapter.buildLaunch({
+        promptFile: "/tmp/p.prompt",
+        cwd: "/tmp",
+        alwaysApprove: true,
+      });
+      expect(plan.command).toContain("-Model");
+      expect(plan.command).toContain("deepseek-v4-flash");
+    } finally {
+      if (prev === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+      else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev;
+    }
+  });
+  test("pro alias maps to deepseek-v4-pro", () => {
+    const prev = process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+    process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = "/tmp/fake-claude-ds";
+    try {
+      const plan = claudeDsAdapter.buildLaunch({
+        promptFile: "/tmp/p.prompt",
+        cwd: "/tmp",
+        alwaysApprove: true,
+        model: "pro",
+      });
+      expect(plan.command).toContain("deepseek-v4-pro");
+      expect(plan.command).not.toContain("deepseek-v4-flash");
+    } finally {
+      if (prev === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+      else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev;
+    }
+  });
+});
+
+describe("deepseek adapter slot", () => {
+  test("health is not ok and buildLaunch throws", () => {
+    expect(deepseekAdapter.health().ok).toBe(false);
+    expect(() =>
+      deepseekAdapter.buildLaunch({
+        promptFile: "/tmp/p",
+        cwd: "/tmp",
+        alwaysApprove: true,
+      }),
+    ).toThrow(/not available/);
   });
 });
 

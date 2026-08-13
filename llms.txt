@@ -14,7 +14,7 @@ cursor-route is a public MIT CLI and Cursor skill that runs parallel coding work
 It uses the familiar strategist and worker-pane shape, but it is not a Codex clone. cursor-route uses Cursor as the planner and DeepSeek plus Grok CLI as workers. Codex is not required.
 
 ### Does mid lane use Anthropic Claude?
-No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` and a DeepSeek key in `ANTHROPIC_AUTH_TOKEN`.
+No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` and a DeepSeek key in `ANTHROPIC_AUTH_TOKEN`. Default model is Flash (`--model flash`); use `--model pro` for harder mid work or when Grok usage is exhausted (not the same as a missing `grok login`).
 
 ### How do I install?
 Run `npm i -g cursor-route`, install tmux if needed, then run `cursor-route health`. The package is available at https://www.npmjs.com/package/cursor-route, and the source is at https://github.com/cemini23/cursor-route.

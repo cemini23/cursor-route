@@ -30,6 +30,22 @@ You are the **orchestrator**. Do **not** implement bulk code in this Cursor sess
 
 Free OpenRouter models may log prompts — keep secrets off the easy lane (the CLI refuse gate still applies).
 
+## claude-ds models
+
+One harness. Do not install a second coding loop.
+
+| Flag / role | Model | When |
+|-------------|-------|------|
+| default mid (`--model flash`) | `deepseek-v4-flash` | `--lane mid` cheap execute |
+| Grok stand-in (`--model pro`) | `deepseek-v4-pro` | Grok CLI **usage/quota** out (not a missing `grok login`) |
+
+```bash
+cursor-route start --lane mid --dir "$PWD" "…"
+cursor-route start --lane mid --model pro --dir "$PWD" "…"
+```
+
+If `worker:grok` is ✗ on health, that is usually **auth** (`grok login` / `XAI_API_KEY`) — not the Pro stand-in case.
+
 ## Workflow
 
 1. Run `cursor-route health` (or `CURSOR_ROUTE_RELAXED=1` for headless). If the **target worker** is unhealthy, fix before spawning.

@@ -80,7 +80,9 @@ mkdir -p .cursor/skills
 cp -R ~/.cursor-route-src/skills/route-orch .cursor/skills/
 ```
 
-Then say **`/route-orch`** or **spawn workers** in Cursor — the skill delegates to `cursor-route` (does not replace private Cemini `/route`).
+Then say **`/route-orch`** or **spawn workers** in Cursor — the skill delegates to `cursor-route` (does not replace a private in-house `/route` skill).
+
+Working notes for this repo (edit in place): [docs/briefs/WORKING.md](./docs/briefs/WORKING.md).
 
 ## Commands
 
@@ -102,10 +104,24 @@ Then say **`/route-orch`** or **spawn workers** in Cursor — the skill delegate
 | Lane | Worker | Intent |
 |------|--------|--------|
 | `easy` | `openrouter` | Wording / drafts on OpenRouter free models (non-secret prompts only — see Security) |
-| `mid` | `claude-ds` | Default implement on DeepSeek |
+| `mid` | `claude-ds` | Default implement on DeepSeek (**Flash** by default) |
 | `hard` | `grok` | Hard implement on Grok CLI |
 
 Always-approve is **on** by default. Opt out: `--ask` or `CURSOR_ROUTE_ASK=1`.
+
+### Mid models (Flash vs Pro)
+
+| Flag | Model id | When |
+|------|----------|------|
+| `--model flash` (default) | `deepseek-v4-flash` | Cheap mid execute |
+| `--model pro` | `deepseek-v4-pro` | Harder mid / Grok **usage** stand-in |
+
+```bash
+cursor-route start --lane mid "…"                    # Flash
+cursor-route start --lane mid --model pro "…"        # Pro
+```
+
+**Grok auth ≠ usage-out:** if `cursor-route health` shows `worker:grok` ✗, run `grok login` (or set `XAI_API_KEY`). That is auth. Quota / subscription usage exhausted is different — use `--lane mid --model pro` as the stand-in, not a missing login.
 
 ## DeepSeek setup (the cheap mid-lane — this is the point)
 
@@ -118,17 +134,20 @@ npm i -g @anthropic-ai/claude-code
 
 export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
 export ANTHROPIC_AUTH_TOKEN=YOUR_DEEPSEEK_API_KEY   # from platform.deepseek.com
-export ANTHROPIC_MODEL=deepseek-v4-pro[1m]
+# Optional shell defaults (CLI --model overrides ANTHROPIC_MODEL for the job):
 export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash
 export CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash
 
 cursor-route health          # worker:claude-ds should be ✓
-cursor-route start --lane mid "…"
+cursor-route start --lane mid "…"                 # Flash (default)
+cursor-route start --lane mid --model pro "…"     # Pro when you need it
 ```
 
 Persist the same vars under `~/.claude/settings.json` → `"env": { … }` if you want them every shell.
 
-**Also accepted:** `claude-ds` or `deepseek-claude` on PATH (Cemini shims).
+**Also accepted:** `claude-ds` or `deepseek-claude` on PATH (Cemini shims). The adapter passes `-Model deepseek-v4-flash|deepseek-v4-pro`.
+
+**Reserved:** `--worker deepseek` is a slot for an official DeepSeek coding harness — not wired yet. Mid stays on `claude-ds`.
 
 **Not the default:** bare `claude` still talking to Anthropic. Health refuses that so a misconfigured install cannot silently burn frontier $ rates. Escape hatch only: `CURSOR_ROUTE_ALLOW_ANTHROPIC=1`.
 
@@ -173,7 +192,7 @@ cursor-route is a public MIT CLI and Cursor skill that runs parallel coding work
 It uses the familiar strategist and worker-pane shape, but it is not a Codex clone. cursor-route uses Cursor as the planner and DeepSeek plus Grok CLI as workers. Codex is not required.
 
 **Does mid lane use Anthropic Claude?**  
-No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` and a DeepSeek key in `ANTHROPIC_AUTH_TOKEN`.
+No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` and a DeepSeek key in `ANTHROPIC_AUTH_TOKEN`. Default model is Flash (`--model flash`); use `--model pro` for harder mid work or when Grok usage is exhausted (not the same as a missing `grok login`).
 
 **How do I install?**  
 Run `npm i -g cursor-route`, install tmux if needed, then run `cursor-route health`. The package is available at https://www.npmjs.com/package/cursor-route, and the source is at https://github.com/cemini23/cursor-route.

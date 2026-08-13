@@ -1,4 +1,4 @@
-import type { WorkerKind } from "../config.ts";
+import type { WorkerKind, DsModelAlias } from "../config.ts";
 
 export interface WorkerHealth {
   worker: WorkerKind;
@@ -24,5 +24,7 @@ export interface Adapter {
     promptFile: string;
     cwd: string;
     alwaysApprove: boolean;
+    /** Mid-lane DeepSeek flash|pro (ignored by other workers). */
+    model?: DsModelAlias;
   }): LaunchPlan;
 }

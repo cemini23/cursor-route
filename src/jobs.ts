@@ -12,7 +12,13 @@ import {
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
-import { config, sessionName, type Lane, type WorkerKind } from "./config.ts";
+import {
+  config,
+  sessionName,
+  type Lane,
+  type WorkerKind,
+  type DsModelAlias,
+} from "./config.ts";
 import { getAdapter } from "./adapters/index.ts";
 import { spawn } from "node:child_process";
 import { spawnSync } from "node:child_process";
@@ -29,6 +35,8 @@ export interface Job {
   status: JobStatus;
   worker: WorkerKind;
   lane?: Lane;
+  /** Mid-lane DeepSeek model alias (flash|pro). Only set for claude-ds. */
+  model?: DsModelAlias;
   prompt: string;
   cwd: string;
   alwaysApprove: boolean;
@@ -221,6 +229,8 @@ export interface StartOptions {
   prompt: string;
   worker?: WorkerKind;
   lane?: Lane;
+  /** Mid-lane DeepSeek: flash (default) | pro. Ignored by grok/openrouter. */
+  model?: DsModelAlias;
   cwd?: string;
   alwaysApprove?: boolean;
   dryRun?: boolean;
@@ -268,12 +278,16 @@ export function startJob(opts: StartOptions): {
   const paths = jobPaths(id);
   writeSecure(paths.prompt, opts.prompt);
 
+  const model =
+    worker === "claude-ds" ? opts.model ?? config.defaultDsModel : undefined;
+
   let plan;
   try {
     plan = adapter.buildLaunch({
       promptFile: paths.prompt,
       cwd,
       alwaysApprove,
+      model,
     });
   } catch (e) {
     try {
@@ -290,6 +304,7 @@ export function startJob(opts: StartOptions): {
     status: "pending",
     worker,
     lane: opts.lane,
+    model,
     prompt: opts.prompt,
     cwd,
     alwaysApprove: plan.alwaysApprove,
