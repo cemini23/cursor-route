@@ -13,7 +13,8 @@ cursor-route health
 
 # Terminal A — three parallel jobs
 cursor-route start --lane hard --dir "$PWD" "Add README section Demo"
-cursor-route start --lane mid --dir "$PWD" "Add a unit test for shellQuote"
+cursor-route start --lane mid --dir "$PWD" "Add a unit test for shellQuote"   # Flash default
+# Optional: cursor-route start --lane mid --model pro --dir "$PWD" "…"
 cursor-route start --worker grok --dir "$PWD" "List open TODOs in src/"
 
 # Terminal B — watch

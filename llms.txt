@@ -2,7 +2,7 @@
 
 > Cursor stays the planner. DeepSeek (mid), Grok CLI (hard), and OpenRouter free models (easy) run parallel coding workers in tmux.
 
-MIT CLI + Cursor skill. npm: https://www.npmjs.com/package/cursor-route  
+MIT CLI + Cursor skill. npm: https://www.npmjs.com/package/cursor-route (latest **0.1.6**)  
 GitHub: https://github.com/cemini23/cursor-route
 
 ## FAQ
@@ -16,8 +16,14 @@ It uses the familiar strategist and worker-pane shape, but it is not a Codex clo
 ### Does mid lane use Anthropic Claude?
 No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` and a DeepSeek key in `ANTHROPIC_AUTH_TOKEN`. Default model is Flash (`--model flash`); use `--model pro` for harder mid work or when Grok usage is exhausted (not the same as a missing `grok login`).
 
+### Flash vs Pro?
+| Flag | Model | When |
+|------|-------|------|
+| `--model flash` (default) | `deepseek-v4-flash` | Cheap mid execute |
+| `--model pro` | `deepseek-v4-pro` | Harder mid / Grok usage stand-in |
+
 ### How do I install?
-Run `npm i -g cursor-route`, install tmux if needed, then run `cursor-route health`. The package is available at https://www.npmjs.com/package/cursor-route, and the source is at https://github.com/cemini23/cursor-route.
+Run `npm i -g cursor-route`, install tmux if needed, then run `cursor-route health`. Copy the Cursor skill from `$(npm root -g)/cursor-route/skills/route-orch`. Source: https://github.com/cemini23/cursor-route
 
 ### Is it free?
 The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you. The easy lane can be free on OpenRouter's free-model route (`openrouter/free`).
@@ -26,4 +32,5 @@ The cursor-route code is open source under MIT. It does not make the worker serv
 
 - npm: `npm i -g cursor-route`
 - Health: `cursor-route health`
+- Mid: `cursor-route start --lane mid "…"` (Flash) · `--model pro` when needed
 - Skill: `/route-orch` (Cursor)

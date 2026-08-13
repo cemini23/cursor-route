@@ -1,7 +1,7 @@
 ---
 title: cursor-route workspace — working brief (edit in place)
 repo: ~/Projects/cursor-route
-npm: cursor-route@0.1.6
+npm: cursor-route@0.1.6 (LIVE on npm latest)
 created: 2026-08-12
 updated: 2026-08-12
 ---
@@ -19,14 +19,16 @@ Cursor Agent plans. Workers run in tmux via `cursor-route`:
 | Lane | Worker | Intent |
 |------|--------|--------|
 | `easy` | OpenRouter free | Wording / drafts — non-secret prompts only |
-| `mid` | claude-ds (DeepSeek behind Claude Code) | Default implement (**Flash**) |
+| `mid` | claude-ds (DeepSeek behind Claude Code) | Default implement (**Flash**; `--model pro` when needed) |
 | `hard` | Grok CLI | Hard implement |
 
 Always-approve on (`--ask` / `CURSOR_ROUTE_ASK=1` to opt out). Jobs live in `~/.local/share/cursor-route/jobs`, not in this clone.
 
+Install: `npm i -g cursor-route` → **0.1.6**. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
+
 ## Open (edit / check off)
 
-- [x] **Flash vs Pro on the CLI** — public default **Flash**; `--model pro` → `deepseek-v4-pro`
+- [x] **Flash vs Pro on the CLI** — public default **Flash**; `--model pro` → `deepseek-v4-pro` (LIVE 0.1.6)
   - [x] pass `claude-ds -Model deepseek-v4-flash|deepseek-v4-pro` from the adapter
   - [x] add `--model flash|pro` on `start`
   - [x] document Grok **auth** ≠ usage-out (`grok login`) vs quota → Pro stand-in
@@ -45,6 +47,7 @@ Always-approve on (`--ask` / `CURSOR_ROUTE_ASK=1` to opt out). Jobs live in `~/.
 | `src/adapters/grok.ts` | Hard worker |
 | `src/adapters/openrouter.ts` | Easy worker |
 | `skills/route-orch/SKILL.md` | Cursor skill — spawn CLI, do not implement in-session |
+| `CHANGELOG.md` | Release notes |
 | `SECURITY.md` | Secret refuse gate |
 
 ## Edit log
@@ -53,3 +56,4 @@ Always-approve on (`--ask` / `CURSOR_ROUTE_ASK=1` to opt out). Jobs live in `~/.
 |------|--------|
 | 2026-08-12 | Brief created in this repo. Flash/Pro CLI + skill still open. |
 | 2026-08-12 | Shipped Flash default + `--model pro`, deepseek slot, skill table → 0.1.6. |
+| 2026-08-12 | npm `cursor-route@0.1.6` LIVE; CHANGELOG + README skill-install path fixed. |

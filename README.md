@@ -27,7 +27,7 @@ If you already live in Cursor, X Premium (Grok CLI), and DeepSeek — stop payin
 |------|----------------|------------------|
 | Cursor | Premium plan | Plan / synthesize / verify (orchestrator) |
 | Grok CLI | X Premium | `--lane hard` implement |
-| DeepSeek via claude-ds | DeepSeek API / plan | `--lane mid` implement |
+| DeepSeek via claude-ds | DeepSeek API / plan | `--lane mid` implement (**Flash** default; `--model pro` when needed) |
 | OpenRouter free models | OpenRouter API (free tier) | `--lane easy` wording/drafts — non-secret prompts only (see Security) |
 | Codex / extra Claude | Optional | Not required for v0 |
 
@@ -73,23 +73,26 @@ cd cursor-route && bun install
 
 ### Cursor skill
 
-Copy the skill into your project or user skills:
+After `npm i -g cursor-route`, copy the packaged skill into a project (or user skills):
 
 ```bash
+PKG="$(npm root -g)/cursor-route"
 mkdir -p .cursor/skills
-cp -R ~/.cursor-route-src/skills/route-orch .cursor/skills/
+cp -R "$PKG/skills/route-orch" .cursor/skills/
 ```
+
+From a git clone: `cp -R skills/route-orch .cursor/skills/`.
 
 Then say **`/route-orch`** or **spawn workers** in Cursor — the skill delegates to `cursor-route` (does not replace a private in-house `/route` skill).
 
-Working notes for this repo (edit in place): [docs/briefs/WORKING.md](./docs/briefs/WORKING.md).
+Working notes for this repo (edit in place): [docs/briefs/WORKING.md](./docs/briefs/WORKING.md). See [CHANGELOG.md](./CHANGELOG.md) for release notes.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
 | `health` | Gate #1 — tmux, runtime, workers |
-| `start <prompt>` | Spawn worker job (`--worker` / `--lane` / `--dir` / `--ask` / `--dry-run` / `--no-tmux`) |
+| `start <prompt>` | Spawn worker job (`--worker` / `--lane` / `--model` / `--dir` / `--ask` / `--dry-run` / `--no-tmux`) |
 | `jobs [--json]` | List jobs |
 | `status <id>` | Job + sessionAlive |
 | `capture <id> [n]` | Last n pane/log lines |
@@ -202,6 +205,7 @@ The cursor-route code is open source under MIT. It does not make the worker serv
 
 ## Related
 
+- Changelog: [CHANGELOG.md](./CHANGELOG.md)
 - Newsletter: [Outlier Weekly](https://outlierweekly.substack.com)
 - YouTube: [@Cemini23](https://www.youtube.com/@Cemini23)
 - Agent meta-wiki: [cemini-claude-code-CCC](https://github.com/cemini23/cemini-claude-code-CCC)
