@@ -8,7 +8,7 @@ import {
   config,
   WORKERS,
   LANES,
-  resolveDsModelAlias,
+  resolveDsModel,
   type WorkerKind,
   type Lane,
   type DsModelAlias,
@@ -54,7 +54,7 @@ Usage:
 Start options:
   --worker <grok|claude-ds|openrouter>  Worker adapter (default: grok; deepseek = reserved slot)
   --lane <easy|mid|hard>                Lane → worker (easy=openrouter, mid=claude-ds, hard=grok)
-  --model <flash|pro>                   Mid DeepSeek model (default: flash). Ignored by grok/openrouter
+  --model <flash|pro>                   Mid DeepSeek only (default: flash / CURSOR_ROUTE_DS_MODEL). Parsed only for claude-ds
   --dir <path>                          Working directory (default: cwd)
   --ask                                 Disable always-approve for this job
   --dry-run                             Print launch command; do not start
@@ -66,8 +66,8 @@ Env:
   CURSOR_ROUTE_JOBS_DIR              Override jobs dir (default: ~/.local/share/cursor-route/jobs)
   CURSOR_ROUTE_MAX_JOBS              Max active jobs (default: 50)
   CURSOR_ROUTE_RELAXED=1             health OK without tmux/workers (CI / infra smoke)
-  CURSOR_ROUTE_ALLOW_ANTHROPIC=1     Allow mid-lane on Anthropic Claude (expensive; not default)
-  CURSOR_ROUTE_DS_MODEL              Default mid model flash|pro (overridden by --model)
+  CURSOR_ROUTE_ALLOW_ANTHROPIC=1     Allow mid-lane on Anthropic Claude (expensive; not default; --model ignored)
+  CURSOR_ROUTE_DS_MODEL              Default mid model flash|pro (or deepseek-v4-pro[1m]); overridden by --model
   CURSOR_ROUTE_GROK_BIN              Override the grok binary path (tests / power users)
   CURSOR_ROUTE_CLAUDE_DS_BIN         Override the claude-ds binary path (tests / power users)
   OPENROUTER_API_KEY                 OpenRouter key (required for --worker openrouter / --lane easy)
@@ -162,10 +162,10 @@ function asLane(v: unknown): Lane | undefined {
   throw new Error(`Invalid --lane ${v}; expected ${LANES.join("|")}`);
 }
 
-function asDsModel(v: unknown): DsModelAlias | undefined {
+function asDsModelChoice(v: unknown): { alias: DsModelAlias; id: string } | undefined {
   if (v === undefined || v === true) return undefined;
   if (typeof v !== "string") throw new Error(`Invalid --model; expected flash|pro`);
-  return resolveDsModelAlias(v);
+  return resolveDsModel(v);
 }
 
 function refuseSecrets(text: string, context: string): void {
@@ -235,12 +235,33 @@ async function main() {
     requireStringFlag(f, "model");
     const promptFile = requireStringFlag(f, "prompt-file");
     const dirFlag = requireStringFlag(f, "dir");
-    let model: DsModelAlias | undefined;
+
+    let worker: WorkerKind | undefined;
+    let lane: Lane | undefined;
     try {
-      model = asDsModel(f.model);
+      worker = asWorker(f.worker);
+      lane = asLane(f.lane);
     } catch (e) {
       console.error((e as Error).message);
       process.exit(2);
+    }
+    const resolvedWorker =
+      worker ?? (lane ? config.laneWorkers[lane] : config.defaultWorker);
+
+    let model: DsModelAlias | undefined;
+    let modelId: string | undefined;
+    // --model is DeepSeek/claude-ds only; ignore (do not validate) for other workers
+    if (f.model !== undefined && resolvedWorker === "claude-ds") {
+      try {
+        const choice = asDsModelChoice(f.model);
+        if (choice) {
+          model = choice.alias;
+          modelId = choice.id;
+        }
+      } catch (e) {
+        console.error((e as Error).message);
+        process.exit(2);
+      }
     }
 
     let prompt = "";
@@ -277,9 +298,10 @@ async function main() {
 
     const result = startJob({
       prompt,
-      worker: asWorker(f.worker),
-      lane: asLane(f.lane),
+      worker,
+      lane,
       model,
+      modelId,
       cwd,
       alwaysApprove: !f.ask,
       dryRun: Boolean(f.dryRun),
@@ -333,8 +355,9 @@ async function main() {
     } else {
       for (const j of jobs) {
         const age = j.startedAt || j.createdAt;
+        const modelCol = j.model ? j.model.padEnd(6) : "".padEnd(6);
         console.log(
-          `${j.id}  ${j.status.padEnd(10)}  ${j.worker.padEnd(10)}  ${age}  ${j.prompt.slice(0, 48).replace(/\n/g, " ")}`,
+          `${j.id}  ${j.status.padEnd(10)}  ${j.worker.padEnd(10)}  ${modelCol}  ${age}  ${j.prompt.slice(0, 48).replace(/\n/g, " ")}`,
         );
       }
     }
@@ -366,7 +389,9 @@ async function main() {
     const view = { ...job, sessionAlive: alive };
     if (json) console.log(JSON.stringify(view, null, 2));
     else {
-      console.log(`${job.id}  ${job.status}  worker=${job.worker}  sessionAlive=${alive}`);
+      console.log(
+        `${job.id}  ${job.status}  worker=${job.worker}${job.model ? `  model=${job.model}` : ""}  sessionAlive=${alive}`,
+      );
       if (job.error) console.log(`error: ${job.error}`);
     }
     return;

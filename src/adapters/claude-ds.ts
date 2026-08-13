@@ -7,7 +7,7 @@ import {
   DS_MODEL_IDS,
   type DsModelAlias,
   config,
-  resolveDsModelAlias,
+  resolveDsModel,
 } from "../config.ts";
 import { shellQuote } from "../util.ts";
 
@@ -29,6 +29,8 @@ function which(cmd: string): string | null {
       execSync(`command -v ${shellQuote(cmd)}`, {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "ignore"],
+        // Bun may ignore mutated process.env.PATH unless env is passed explicitly
+        env: { ...process.env },
       }).trim() || null
     );
   } catch {
@@ -65,14 +67,16 @@ function deepseekBaseFromSettings(): string | null {
 
 /** Resolved DeepSeek base URL for the mid-lane harness, or null. */
 export function resolvedDeepSeekBaseUrl(): string | null {
+  // Explicit env wins: a non-DeepSeek ANTHROPIC_BASE_URL must not fall through to settings.
   for (const candidate of [
     process.env.ANTHROPIC_BASE_URL,
     process.env.CURSOR_ROUTE_ANTHROPIC_BASE_URL,
-    deepseekBaseFromSettings(),
   ]) {
-    if (candidate && isDeepSeekBaseUrl(candidate)) return candidate;
+    if (candidate) {
+      return isDeepSeekBaseUrl(candidate) ? candidate : null;
+    }
   }
-  return null;
+  return deepseekBaseFromSettings();
 }
 
 /** True when Claude Code harness is routed to DeepSeek (cheap path). */
@@ -120,18 +124,16 @@ function resolveClaudeDs(): { binary: string; mode: string } | null {
   return null;
 }
 
-function pickModelAlias(requested?: DsModelAlias): DsModelAlias {
-  if (requested) return requested;
-  // Env override for power users who already export ANTHROPIC_MODEL
-  const fromEnv = process.env.CURSOR_ROUTE_DS_MODEL || process.env.ANTHROPIC_MODEL;
-  if (fromEnv) {
-    try {
-      return resolveDsModelAlias(fromEnv);
-    } catch {
-      /* fall through to default */
-    }
+function pickModel(requested?: DsModelAlias, modelId?: string): { alias: DsModelAlias; id: string } {
+  if (modelId) {
+    const alias = requested ?? resolveDsModel(modelId).alias;
+    return { alias, id: modelId };
   }
-  return config.defaultDsModel;
+  if (requested) {
+    return { alias: requested, id: DS_MODEL_IDS[requested] };
+  }
+  // Env default (startJob normally resolves this; kept for direct buildLaunch callers)
+  return resolveDsModel(process.env.CURSOR_ROUTE_DS_MODEL || process.env.ANTHROPIC_MODEL);
 }
 
 /**
@@ -177,30 +179,45 @@ export const claudeDsAdapter: Adapter = {
       detail: `ok (${resolved.mode}; default model ${DS_MODEL_IDS[config.defaultDsModel]})`,
     };
   },
-  buildLaunch({ promptFile, cwd, alwaysApprove, model }) {
+  buildLaunch({ promptFile, cwd, alwaysApprove, model, modelId }) {
     const resolved = resolveClaudeDs();
     if (!resolved) {
       throw new Error("DeepSeek worker not available — run: cursor-route health");
     }
 
-    const alias = pickModelAlias(model);
-    const modelId = DS_MODEL_IDS[alias];
-
     const ask = process.env.CURSOR_ROUTE_ASK === "1" || process.env.CLAUDE_DS_ASK === "1";
     const skip = alwaysApprove && !ask;
-    // Stock `claude` needs DeepSeek env injected into the worker process
-    // (tmux panes may not inherit client env from a long-lived server).
-    const env = resolved.mode.startsWith("claude → DeepSeek")
-      ? deepSeekWorkerEnv(modelId)
-      : undefined;
+    const isAnthropicEscape = resolved.mode.startsWith("claude → Anthropic");
+    const isDeepSeekStock = resolved.mode.startsWith("claude → DeepSeek");
+    const isShim =
+      resolved.mode.startsWith("claude-ds") || resolved.mode.startsWith("deepseek-claude");
 
-    if (resolved.mode.startsWith("claude-ds") || resolved.mode.startsWith("deepseek-claude")) {
+    // Anthropic escape hatch: do not pass DeepSeek model ids (unknown to Anthropic).
+    // --model flash|pro is DeepSeek-only; stock Claude uses its own defaults / ANTHROPIC_MODEL.
+    if (isAnthropicEscape) {
+      const parts = [
+        shellQuote(resolved.binary),
+        "-p",
+        `"$(cat ${shellQuote(promptFile)})"`,
+      ];
+      if (skip) parts.push("--dangerously-skip-permissions");
+      return {
+        worker: "claude-ds",
+        command: `cd ${shellQuote(cwd)} && ${parts.join(" ")}`,
+        alwaysApprove: skip,
+      };
+    }
+
+    const choice = pickModel(model, modelId);
+    const env = isDeepSeekStock ? deepSeekWorkerEnv(choice.id) : undefined;
+
+    if (isShim) {
       const parts = [
         shellQuote(resolved.binary),
         "-PromptFile",
         shellQuote(promptFile),
         "-Model",
-        shellQuote(modelId),
+        shellQuote(choice.id),
       ];
       if (skip) parts.push("--dangerously-skip-permissions");
       return {
@@ -211,12 +228,13 @@ export const claudeDsAdapter: Adapter = {
       };
     }
 
+    // Stock claude → DeepSeek
     const parts = [
       shellQuote(resolved.binary),
       "-p",
       `"$(cat ${shellQuote(promptFile)})"`,
       "--model",
-      shellQuote(modelId),
+      shellQuote(choice.id),
     ];
     if (skip) parts.push("--dangerously-skip-permissions");
     return {

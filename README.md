@@ -118,13 +118,18 @@ Always-approve is **on** by default. Opt out: `--ask` or `CURSOR_ROUTE_ASK=1`.
 |------|----------|------|
 | `--model flash` (default) | `deepseek-v4-flash` | Cheap mid execute |
 | `--model pro` | `deepseek-v4-pro` | Harder mid / Grok **usage** stand-in |
+| `--model deepseek-v4-pro[1m]` | `deepseek-v4-pro[1m]` | Large-context Pro (SKU preserved) |
 
 ```bash
 cursor-route start --lane mid "…"                    # Flash
 cursor-route start --lane mid --model pro "…"        # Pro
+# Or set default without a flag:
+export CURSOR_ROUTE_DS_MODEL=pro   # also honors ANTHROPIC_MODEL; --model overrides
 ```
 
 **Grok auth ≠ usage-out:** if `cursor-route health` shows `worker:grok` ✗, run `grok login` (or set `XAI_API_KEY`). That is auth. Quota / subscription usage exhausted is different — use `--lane mid --model pro` as the stand-in, not a missing login.
+
+`CURSOR_ROUTE_ALLOW_ANTHROPIC=1` is an expensive escape hatch: it does **not** pass DeepSeek `--model` ids (Anthropic would reject them).
 
 ## DeepSeek setup (the cheap mid-lane — this is the point)
 

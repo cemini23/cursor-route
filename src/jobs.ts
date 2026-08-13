@@ -15,6 +15,8 @@ import { dirname } from "node:path";
 import {
   config,
   sessionName,
+  defaultDsModelFromEnv,
+  DS_MODEL_IDS,
   type Lane,
   type WorkerKind,
   type DsModelAlias,
@@ -231,6 +233,8 @@ export interface StartOptions {
   lane?: Lane;
   /** Mid-lane DeepSeek: flash (default) | pro. Ignored by grok/openrouter. */
   model?: DsModelAlias;
+  /** Concrete DeepSeek id (preserves pro[1m]). Derived from --model / env when unset. */
+  modelId?: string;
   cwd?: string;
   alwaysApprove?: boolean;
   dryRun?: boolean;
@@ -278,8 +282,27 @@ export function startJob(opts: StartOptions): {
   const paths = jobPaths(id);
   writeSecure(paths.prompt, opts.prompt);
 
-  const model =
-    worker === "claude-ds" ? opts.model ?? config.defaultDsModel : undefined;
+  let model: DsModelAlias | undefined;
+  let modelId: string | undefined;
+  if (worker === "claude-ds") {
+    if (opts.model) {
+      model = opts.model;
+      modelId = opts.modelId ?? DS_MODEL_IDS[opts.model];
+    } else {
+      try {
+        const choice = defaultDsModelFromEnv();
+        model = choice.alias;
+        modelId = opts.modelId ?? choice.id;
+      } catch (e) {
+        try {
+          unlinkSync(paths.prompt);
+        } catch {
+          /* ignore */
+        }
+        return { ok: false, error: (e as Error).message };
+      }
+    }
+  }
 
   let plan;
   try {
@@ -288,6 +311,7 @@ export function startJob(opts: StartOptions): {
       cwd,
       alwaysApprove,
       model,
+      modelId,
     });
   } catch (e) {
     try {

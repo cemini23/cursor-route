@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.7 — 2026-08-12
+
+- Fix: `CURSOR_ROUTE_DS_MODEL` / `ANTHROPIC_MODEL` now apply on the `start` product path (live default)
+- Fix: Anthropic escape hatch (`CURSOR_ROUTE_ALLOW_ANTHROPIC=1`) no longer passes DeepSeek `--model` ids
+- Fix: preserve `deepseek-v4-pro[1m]` (no silent SKU strip)
+- `--model` validated only for `claude-ds`; ignored for grok/openrouter (including invalid values)
+- `jobs` / `status` text output show `model` when set
+- Tests cover env default via `startJob`, deepseek slot, Anthropic hatch, health OR-gate
+
 ## 0.1.6 — 2026-08-12
 
 - Mid lane defaults to DeepSeek **Flash** (`deepseek-v4-flash`)

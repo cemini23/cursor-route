@@ -24,7 +24,9 @@ export interface Adapter {
     promptFile: string;
     cwd: string;
     alwaysApprove: boolean;
-    /** Mid-lane DeepSeek flash|pro (ignored by other workers). */
+    /** Mid-lane DeepSeek flash|pro (ignored by other workers / Anthropic escape hatch). */
     model?: DsModelAlias;
+    /** Concrete DeepSeek model id for -Model/--model (preserves pro[1m]). */
+    modelId?: string;
   }): LaunchPlan;
 }
