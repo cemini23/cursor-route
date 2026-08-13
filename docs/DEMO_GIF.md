@@ -1,5 +1,21 @@
 # Hero demo recording (GIF)
 
+## Status
+
+No real GIF yet — the checkbox stays open until a `docs/fixtures/hero.gif` exists.
+
+Committed fixture for now: [docs/fixtures/hero-demo.log](./fixtures/hero-demo.log),
+a reproducible dry-run capture (no live workers, no secrets). Regenerate it with:
+
+```bash
+docs/fixtures/generate-hero-demo.sh
+```
+
+Also see [docs/fixtures/claude-ds-smoke.log](./fixtures/claude-ds-smoke.log)
+(headless `claude-ds` smoke proof). Both are machine-agnostic.
+
+## Recording the real GIF (later)
+
 tmux is required for the viral attach/send demo. On this laptop brew needs sudo — record after:
 
 ```bash
@@ -27,4 +43,4 @@ If you previously exported `$HOME/.cursor-route/bin`, that dir is stale — remo
 
 Record with [asciinema](https://asciinema.org/) or CleanShot → export GIF → `docs/fixtures/hero.gif`.
 
-Until then, use `docs/fixtures/claude-ds-smoke.log` as the committed proof fixture.
+When a real GIF lands, check off the **Hero GIF** item in `docs/briefs/WORKING.md` and reference it here.

@@ -102,6 +102,36 @@ Working notes for this repo (edit in place): [docs/briefs/WORKING.md](./docs/bri
 | `sessions` | Managed tmux sessions |
 | `clean [--days N]` | Drop old job files |
 
+## Demo
+
+A dry-run capture (no live workers, no secrets) is committed as a reproducible fixture:
+
+```bash
+# Needs Bun or Node 20+ and a runnable ./bin/cursor-route (clone: bun install)
+docs/fixtures/generate-hero-demo.sh      # regenerate docs/fixtures/hero-demo.log
+```
+
+```text
+$ cursor-route --version
+0.1.7
+
+$ CURSOR_ROUTE_RELAXED=1 cursor-route health
+cursor-route v0.1.7
+health: OK
+
+$ cursor-route start --lane mid --model flash --dry-run "Add a unit test for shellQuote"
+dry-run job a1b2c3d4
+worker: claude-ds
+model:  flash
+command: cd '~/Projects/cursor-route' && '~/.local/bin/claude-ds' -PromptFile '~/.local/share/cursor-route/jobs/a1b2c3d4.prompt' -Model 'deepseek-v4-flash' --dangerously-skip-permissions
+
+$ cursor-route jobs --json
+[]
+```
+
+Full capture: [docs/fixtures/hero-demo.log](./docs/fixtures/hero-demo.log).
+A real hero GIF is still pending — recording steps live in [docs/DEMO_GIF.md](./docs/DEMO_GIF.md).
+
 ## Lanes
 
 | Lane | Worker | Intent |

@@ -1,5 +1,7 @@
 # Demo fixture log (no secrets)
 
+> **Current fixture:** [docs/fixtures/hero-demo.log](./fixtures/hero-demo.log) — generated, dry-run, machine-agnostic (regenerate: `docs/fixtures/generate-hero-demo.sh`). Real GIF still pending: [DEMO_GIF.md](./DEMO_GIF.md).
+
 Simulated capture output for README / tweet assets — replace with a real GIF once tmux is available.
 
 ```

@@ -3,7 +3,7 @@ title: cursor-route workspace — working brief (edit in place)
 repo: ~/Projects/cursor-route
 npm: cursor-route@0.1.7 (LIVE on npm latest)
 created: 2026-08-12
-updated: 2026-08-12
+updated: 2026-08-13
 ---
 
 # cursor-route — living brief
@@ -35,7 +35,7 @@ Install: `npm i -g cursor-route` → **0.1.7**. Release notes: [CHANGELOG.md](..
 - [x] **Skill `route-orch`** — Flash/Pro table in `skills/` + `.cursor/skills/`
 - [x] **Official DeepSeek Harness** — `deepseek` adapter slot present; mid stays on claude-ds
 - [x] **0.1.7 debug fixes** — env default wired through `startJob`; Anthropic hatch omits DS ids; preserve `[1m]`
-- [ ] **Hero GIF** — still outstanding (`docs/DEMO_GIF.md`)
+- [ ] **Hero GIF** — still outstanding; dry-run fixture ships as the substitute for now (`docs/fixtures/hero-demo.log` — see `docs/DEMO_GIF.md`)
 - [x] **Do not** paste private `ROUTE_KIT`, SIP, prod paths, or hang-watchdog env into this public repo
 
 ## Repo map
@@ -59,3 +59,4 @@ Install: `npm i -g cursor-route` → **0.1.7**. Release notes: [CHANGELOG.md](..
 | 2026-08-12 | Shipped Flash default + `--model pro`, deepseek slot, skill table → 0.1.6. |
 | 2026-08-12 | npm `cursor-route@0.1.6` LIVE; CHANGELOG + README skill-install path fixed. |
 | 2026-08-12 | Grok debug → 0.1.7: env DS default, Anthropic hatch, `[1m]` preserve. |
+| 2026-08-13 | Hero demo dry-run fixture + docs: `docs/fixtures/generate-hero-demo.sh` → `hero-demo.log`; README Demo, DEMO_GIF.md, demo-notes pointer. Real GIF still open. |
