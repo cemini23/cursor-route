@@ -60,3 +60,4 @@ Install: `npm i -g cursor-route` → **0.1.7**. Release notes: [CHANGELOG.md](..
 | 2026-08-12 | npm `cursor-route@0.1.6` LIVE; CHANGELOG + README skill-install path fixed. |
 | 2026-08-12 | Grok debug → 0.1.7: env DS default, Anthropic hatch, `[1m]` preserve. |
 | 2026-08-13 | Hero demo dry-run fixture + docs: `docs/fixtures/generate-hero-demo.sh` → `hero-demo.log`; README Demo, DEMO_GIF.md, demo-notes pointer. Real GIF still open. |
+| 2026-08-13 | GPTSOL fixes: scrub inherited env/paths, stable job ids, ignore `docs/briefs/handoffs/`, GIF checkbox wording. |
