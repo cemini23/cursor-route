@@ -113,10 +113,10 @@ docs/fixtures/generate-hero-demo.sh      # regenerate docs/fixtures/hero-demo.lo
 
 ```text
 $ cursor-route --version
-0.1.7
+0.1.8
 
 $ CURSOR_ROUTE_RELAXED=1 cursor-route health
-cursor-route v0.1.7
+cursor-route v0.1.8
 health: OK
 
 $ cursor-route start --lane mid --model flash --dry-run "Add a unit test for shellQuote"
@@ -185,7 +185,18 @@ Persist the same vars under `~/.claude/settings.json` → `"env": { … }` if yo
 
 **Also accepted:** `claude-ds` or `deepseek-claude` on PATH (Cemini shims). The adapter passes `-Model deepseek-v4-flash|deepseek-v4-pro`.
 
-**Reserved:** `--worker deepseek` is a slot for an official DeepSeek coding harness — not wired yet. Mid stays on `claude-ds`.
+**Experimental:** `--worker deepseek` runs the official DeepSeek Harness (`dsh`, npm `@deepseek-ai/dsh`) as an opt-in worker — **mid stays on `claude-ds`**; don't default lanes here.
+
+```bash
+npm i -g @deepseek-ai/dsh
+export DEEPSEEK_API_KEY=YOUR_DEEPSEEK_API_KEY   # from platform.deepseek.com
+
+cursor-route health                              # worker:deepseek should be ✓
+cursor-route start --worker deepseek "…"         # Flash (default)
+cursor-route start --worker deepseek --model pro "…"   # Pro when you need it
+```
+
+The adapter launches `dsh --profile headless` with a **per-job Cordis patch** (`jobs/<id>.dsh-patch.yml`, mode 0600) that pins `--model flash|pro` (`deepseek-v4-pro[1m]` preserved) — it never rewrites `~/.dsh/settings.yaml`, so parallel jobs don't race. Always-approve maps to `DSH_PERMISSION_MODE=danger-full-access`; `--ask` drops to `workspace-write`. Your `DEEPSEEK_API_KEY` travels via env only — never in the launch command or patch. Override the binary with `CURSOR_ROUTE_DSH_BIN`.
 
 **Not the default:** bare `claude` still talking to Anthropic. Health refuses that so a misconfigured install cannot silently burn frontier $ rates. Escape hatch only: `CURSOR_ROUTE_ALLOW_ANTHROPIC=1`.
 
@@ -279,8 +290,8 @@ MIT © Cemini — see [LICENSE](LICENSE).
 
 ## Roadmap (explicitly later)
 
-- Homebrew tap  
-- Native DeepSeek harness adapter  
-- Codebase map injection (`--map`)  
-- Cursor CLI `agent` as alternate supervisor  
+- Homebrew tap
+- Stabilize the DeepSeek harness adapter (experimental `--worker deepseek` since 0.1.8)
+- Codebase map injection (`--map`)
+- Cursor CLI `agent` as alternate supervisor
 - Web UI / CAO-style MCP supervisor

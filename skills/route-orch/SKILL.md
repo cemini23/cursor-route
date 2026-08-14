@@ -46,6 +46,19 @@ cursor-route start --lane mid --model pro --dir "$PWD" "…"
 
 If `worker:grok` is ✗ on health, that is usually **auth** (`grok login` / `XAI_API_KEY`) — not the Pro stand-in case.
 
+## Experimental: --worker deepseek (dsh)
+
+Official DeepSeek Harness headless as an opt-in worker — **not the mid default** (mid stays `claude-ds`).
+
+```bash
+npm i -g @deepseek-ai/dsh
+export DEEPSEEK_API_KEY=...        # platform.deepseek.com
+cursor-route start --worker deepseek --dir "$PWD" "…"
+cursor-route start --worker deepseek --model pro --dir "$PWD" "…"   # --model applies here too
+```
+
+Health ✓ needs `dsh` on PATH and `DEEPSEEK_API_KEY` set. The adapter pins `--model` via a per-job `--patch` (never touches `~/.dsh/settings.yaml`); always-approve → `DSH_PERMISSION_MODE=danger-full-access`, `--ask` → `workspace-write`. The key never enters the command or patch.
+
 ## Workflow
 
 1. Run `cursor-route health` (or `CURSOR_ROUTE_RELAXED=1` for headless). If the **target worker** is unhealthy, fix before spawning.
@@ -63,7 +76,7 @@ EOF
 )"
 ```
 
-Or `--worker grok` / `--worker claude-ds` / `--worker openrouter` (or `--lane easy`). Use `--no-tmux` only when tmux is unavailable.
+Or `--worker grok` / `--worker claude-ds` / `--worker deepseek` (experimental) / `--worker openrouter` (or `--lane easy`). Use `--no-tmux` only when tmux is unavailable.
 
 4. Monitor: `cursor-route jobs --json` · `cursor-route capture <id>` · `cursor-route send <id> "…"` (tmux only).
 5. Summarize worker results with **verify evidence** — no status-only “done”. If verify fails, `send` a correction or spawn a follow-up — do not invent success.
@@ -75,6 +88,6 @@ Defaults on for workers. Opt out: `cursor-route start … --ask` or `CURSOR_ROUT
 ## Anti-patterns
 
 - Do not paste API keys / private keys into prompts or `send`
-- Do not claim DeepSeek-native harness until that adapter ships — today is **claude-ds**
+- Do not claim the official DeepSeek harness (`@deepseek-ai/dsh`) is the mid default — `--worker deepseek` is experimental only; mid stays **claude-ds**
 - Do not open-source or dump private Cemini `agent-toolkit` paths into public handoffs
 - Do not mark done without reading `capture` / exit status

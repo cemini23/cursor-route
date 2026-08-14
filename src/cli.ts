@@ -52,9 +52,9 @@ Usage:
   cursor-route clean [--days N]
 
 Start options:
-  --worker <grok|claude-ds|openrouter>  Worker adapter (default: grok; deepseek = reserved slot)
+  --worker <grok|claude-ds|openrouter|deepseek>  Worker adapter (default: grok; deepseek = experimental official dsh)
   --lane <easy|mid|hard>                Lane → worker (easy=openrouter, mid=claude-ds, hard=grok)
-  --model <flash|pro>                   Mid DeepSeek only (default: flash / CURSOR_ROUTE_DS_MODEL). Parsed only for claude-ds
+  --model <flash|pro>                   Mid DeepSeek only (default: flash / CURSOR_ROUTE_DS_MODEL). Parsed for claude-ds + deepseek
   --dir <path>                          Working directory (default: cwd)
   --ask                                 Disable always-approve for this job
   --dry-run                             Print launch command; do not start
@@ -70,6 +70,8 @@ Env:
   CURSOR_ROUTE_DS_MODEL              Default mid model flash|pro (or deepseek-v4-pro[1m]); overridden by --model
   CURSOR_ROUTE_GROK_BIN              Override the grok binary path (tests / power users)
   CURSOR_ROUTE_CLAUDE_DS_BIN         Override the claude-ds binary path (tests / power users)
+  CURSOR_ROUTE_DSH_BIN               Override the dsh binary path (tests / power users)
+  DEEPSEEK_API_KEY                   DeepSeek API key (required for --worker deepseek)
   OPENROUTER_API_KEY                 OpenRouter key (required for --worker openrouter / --lane easy)
   CURSOR_ROUTE_OPENROUTER_MODEL      OpenRouter model (default: openrouter/free)
   OPENROUTER_BASE_URL                OpenRouter API base (default: https://openrouter.ai/api/v1)
@@ -250,8 +252,9 @@ async function main() {
 
     let model: DsModelAlias | undefined;
     let modelId: string | undefined;
-    // --model is DeepSeek/claude-ds only; ignore (do not validate) for other workers
-    if (f.model !== undefined && resolvedWorker === "claude-ds") {
+    // --model is DeepSeek-only (claude-ds mid lane + experimental deepseek worker);
+    // ignore (do not validate) for other workers
+    if (f.model !== undefined && (resolvedWorker === "claude-ds" || resolvedWorker === "deepseek")) {
       try {
         const choice = asDsModelChoice(f.model);
         if (choice) {

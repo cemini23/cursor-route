@@ -11,6 +11,7 @@ CURSOR_ROUTE_RELAXED=1 ./bin/cursor-route health   # without tmux
 ./bin/cursor-route start --dry-run --worker grok "ping"
 ./bin/cursor-route start --dry-run --lane mid --model flash "ping"
 ./bin/cursor-route start --dry-run --lane mid --model pro "ping"
+./bin/cursor-route start --dry-run --worker deepseek --model flash "ping"   # needs dsh + DEEPSEEK_API_KEY for real starts
 ```
 
 Keep `skills/route-orch/SKILL.md` and `.cursor/skills/route-orch/SKILL.md` identical when editing the skill.

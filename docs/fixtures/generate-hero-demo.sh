@@ -19,7 +19,8 @@ if [[ ! -f "$BIN" ]]; then
 fi
 
 # Neutralize inherited overrides that would leak private paths into the log.
-unset CURSOR_ROUTE_CLAUDE_DS_BIN CURSOR_ROUTE_GROK_BIN CURSOR_ROUTE_ALLOW_ANTHROPIC \
+unset CURSOR_ROUTE_CLAUDE_DS_BIN CURSOR_ROUTE_GROK_BIN CURSOR_ROUTE_DSH_BIN \
+  CURSOR_ROUTE_ALLOW_ANTHROPIC \
   CURSOR_ROUTE_ALLOW_STOCK_CLAUDE CURSOR_ROUTE_ANTHROPIC_BASE_URL CURSOR_ROUTE_DS_MODEL \
   CURSOR_ROUTE_OPENROUTER_MODEL OPENROUTER_API_KEY OPENROUTER_BASE_URL \
   ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_MODEL \
@@ -28,6 +29,9 @@ unset CURSOR_ROUTE_CLAUDE_DS_BIN CURSOR_ROUTE_GROK_BIN CURSOR_ROUTE_ALLOW_ANTHRO
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 export CURSOR_ROUTE_JOBS_DIR="$TMP/.demo-jobs"
+# Pin dsh to a missing path so worker:deepseek renders identically on machines
+# that do have a real dsh installed (the adapter shows the install hint, no path).
+export CURSOR_ROUTE_DSH_BIN="$TMP/no-such-dsh"
 
 RAW="$TMP/hero-demo.raw"
 NORM="$TMP/hero-demo.norm"

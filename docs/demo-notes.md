@@ -6,10 +6,10 @@ Simulated capture output for README / tweet assets — replace with a real GIF o
 
 ```
 $ cursor-route --version
-0.1.6
+0.1.8
 
 $ cursor-route health
-cursor-route v0.1.6
+cursor-route v0.1.8
 health: OK
   ✓ tmux
   ✓ runtime          bun ok
@@ -17,7 +17,7 @@ health: OK
   ✓ worker:grok
   ✓ worker:claude-ds
   ✓ worker:openrouter
-  ✗ worker:deepseek  unreleased — mid lane uses claude-ds
+  ✗ worker:deepseek  dsh not found — mid default remains claude-ds
   ✓ jobs_dir         ~/.local/share/cursor-route/jobs
 
 $ cursor-route start --lane mid "Add a failing test then make it pass"

@@ -2,7 +2,10 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { defaultJobsDir } from "./runtime.ts";
 
-/** Workers with a live adapter. `deepseek` is a reserved slot (unreleased harness). */
+/**
+ * Workers with a live adapter. `deepseek` is the experimental official
+ * DeepSeek Harness (dsh) — an opt-in worker, not a mid default.
+ */
 export type WorkerKind = "grok" | "claude-ds" | "openrouter" | "deepseek";
 export type Lane = "easy" | "mid" | "hard";
 
@@ -86,13 +89,16 @@ function maxConcurrentJobsFromEnv(): number {
  */
 export const config = {
   product: "cursor-route",
-  version: "0.1.7",
+  version: "0.1.8",
   get jobsDir(): string {
     return defaultJobsDir();
   },
   tmuxPrefix: "cursor-route",
   defaultWorker: "grok" as WorkerKind,
-  /** Lane → default worker (Cemini /route public core). */
+  /**
+   * Lane → default worker (Cemini /route public core).
+   * `deepseek` is experimental only — mid stays on claude-ds.
+   */
   laneWorkers: {
     easy: "openrouter" as WorkerKind,
     mid: "claude-ds" as WorkerKind,

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.8 — 2026-08-14
+
+- Experimental `--worker deepseek`: official DeepSeek Harness (`dsh`, `@deepseek-ai/dsh`) runs headless — `dsh --profile headless` with a per-job Cordis patch pinning the model. Not a mid default: `laneWorkers.mid` stays `claude-ds`.
+- `--model flash|pro` (and `deepseek-v4-pro[1m]`) now applies to both `claude-ds` and `deepseek`; patch sets `agent-default-model` → `provider: deepseek-official` (never rewrites `~/.dsh/settings.yaml`, so parallel jobs don't race).
+- Always-approve → `DSH_PERMISSION_MODE=danger-full-access`; `--ask` → `workspace-write`. `DEEPSEEK_API_KEY` travels via env only — never in the launch command or patch.
+- Health: `worker:deepseek` ✓ only when `dsh` is on PATH (override `CURSOR_ROUTE_DSH_BIN`) **and** `DEEPSEEK_API_KEY` is set.
+- Dry-run for `--worker deepseek` works without `dsh` installed (falls back to plain `dsh` in the printed command); real starts stay gated by health.
+- `clean` also removes leftover `.dsh-patch.yml` files; patch path never overwrites a non-`.prompt` prompt file.
+
 ## 0.1.7 — 2026-08-12
 
 - Fix: `CURSOR_ROUTE_DS_MODEL` / `ANTHROPIC_MODEL` now apply on the `start` product path (live default)

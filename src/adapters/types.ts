@@ -24,9 +24,11 @@ export interface Adapter {
     promptFile: string;
     cwd: string;
     alwaysApprove: boolean;
-    /** Mid-lane DeepSeek flash|pro (ignored by other workers / Anthropic escape hatch). */
+    /** Mid-lane DeepSeek flash|pro (claude-ds + deepseek; ignored by grok/openrouter / Anthropic escape hatch). */
     model?: DsModelAlias;
     /** Concrete DeepSeek model id for -Model/--model (preserves pro[1m]). */
     modelId?: string;
+    /** True on --dry-run: adapters may drop artifacts they just wrote (e.g. dsh patch). */
+    dryRun?: boolean;
   }): LaunchPlan;
 }

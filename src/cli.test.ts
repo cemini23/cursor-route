@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync, chmodSync, rmSync } from "node:fs";
+import {
+  mkdirSync,
+  writeFileSync,
+  chmodSync,
+  rmSync,
+  readFileSync,
+  readdirSync,
+  existsSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { resolveWorker, startJob } from "./jobs.ts";
@@ -8,7 +16,7 @@ import { shellQuote, newJobId } from "./util.ts";
 import { runHealth } from "./health.ts";
 import { looksLikeSecretMaterial, redactSecrets } from "./secrets.ts";
 import { isDeepSeekRouted, isDeepSeekBaseUrl, claudeDsAdapter } from "./adapters/claude-ds.ts";
-import { deepseekAdapter } from "./adapters/deepseek.ts";
+import { deepseekAdapter, patchPathForPrompt } from "./adapters/deepseek.ts";
 import { grokAdapter } from "./adapters/grok.ts";
 
 describe("resolveWorker", () => {
@@ -190,15 +198,56 @@ describe("startJob product path", () => {
     }
   });
 
-  test("--worker deepseek dry-run fails", () => {
-    const result = startJob({
-      prompt: "ping",
-      worker: "deepseek",
-      dryRun: true,
-    });
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error).toMatch(/not available|claude-ds/i);
+  test("--worker deepseek dry-run succeeds with fake dsh + key", () => {
+    const dir = join(tmpdir(), `cr-dsh-start-${process.pid}`);
+    mkdirSync(dir, { recursive: true });
+    const bin = join(dir, "dsh");
+    writeFileSync(bin, "#!/bin/sh\necho fake-dsh\n");
+    chmodSync(bin, 0o755);
+    const prev = {
+      bin: process.env.CURSOR_ROUTE_DSH_BIN,
+      key: process.env.DEEPSEEK_API_KEY,
+      ds: process.env.CURSOR_ROUTE_DS_MODEL,
+      am: process.env.ANTHROPIC_MODEL,
+      jobs: process.env.CURSOR_ROUTE_JOBS_DIR,
+    };
+    process.env.CURSOR_ROUTE_DSH_BIN = bin;
+    // Not a real key: short and dash-separated so the CLI refuse gate would not trip.
+    process.env.DEEPSEEK_API_KEY = "sk-test-not-a-real-key";
+    delete process.env.CURSOR_ROUTE_DS_MODEL;
+    delete process.env.ANTHROPIC_MODEL;
+    process.env.CURSOR_ROUTE_JOBS_DIR = join(dir, "jobs");
+    try {
+      const result = startJob({
+        prompt: "ping",
+        worker: "deepseek",
+        dryRun: true,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.job.worker).toBe("deepseek");
+      expect(result.job.model).toBe("flash");
+      expect(result.command).toContain("--profile headless");
+      expect(result.command).toContain("--patch");
+      expect(result.command).toContain("$(cat");
+      expect(result.command).toContain("DSH_PERMISSION_MODE");
+      expect(result.command).not.toContain("sk-test");
+      expect(result.command).not.toContain("npx");
+      // Dry-run keeps no durable artifacts (prompt + dsh patch both removed)
+      expect(readdirSync(join(dir, "jobs")).length).toBe(0);
+    } finally {
+      if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_DSH_BIN;
+      else process.env.CURSOR_ROUTE_DSH_BIN = prev.bin;
+      if (prev.key === undefined) delete process.env.DEEPSEEK_API_KEY;
+      else process.env.DEEPSEEK_API_KEY = prev.key;
+      if (prev.ds === undefined) delete process.env.CURSOR_ROUTE_DS_MODEL;
+      else process.env.CURSOR_ROUTE_DS_MODEL = prev.ds;
+      if (prev.am === undefined) delete process.env.ANTHROPIC_MODEL;
+      else process.env.ANTHROPIC_MODEL = prev.am;
+      if (prev.jobs === undefined) delete process.env.CURSOR_ROUTE_JOBS_DIR;
+      else process.env.CURSOR_ROUTE_JOBS_DIR = prev.jobs;
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test("grok command never includes deepseek-v4", () => {
@@ -220,16 +269,287 @@ describe("startJob product path", () => {
   });
 });
 
-describe("deepseek adapter slot", () => {
-  test("health is not ok and buildLaunch throws", () => {
-    expect(deepseekAdapter.health().ok).toBe(false);
-    expect(() =>
-      deepseekAdapter.buildLaunch({
-        promptFile: "/tmp/p",
-        cwd: "/tmp",
-        alwaysApprove: true,
-      }),
-    ).toThrow(/not available/);
+describe("deepseek adapter (dsh)", () => {
+  /** Executable fake `dsh` in a fresh tmpdir (existsSync passes). */
+  const makeFakeDsh = (suffix: string) => {
+    const dir = join(tmpdir(), `cr-dsh-${process.pid}-${suffix}`);
+    mkdirSync(dir, { recursive: true });
+    const bin = join(dir, "dsh");
+    writeFileSync(bin, "#!/bin/sh\necho fake-dsh\n");
+    chmodSync(bin, 0o755);
+    return { dir, bin };
+  };
+
+  /** Set/delete env for the duration of fn; restore afterwards. */
+  const withEnv = (
+    patch: Record<string, string | undefined>,
+    fn: () => void,
+  ) => {
+    const prev = new Map<string, string | undefined>();
+    for (const k of Object.keys(patch)) {
+      prev.set(k, process.env[k]);
+      const v = patch[k];
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    try {
+      fn();
+    } finally {
+      for (const [k, v] of prev) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  };
+
+  test("health: no binary and no key → not ok, install hint names the npm package", () => {
+    withEnv(
+      {
+        CURSOR_ROUTE_DSH_BIN: join(tmpdir(), `missing-dsh-${process.pid}`),
+        DEEPSEEK_API_KEY: undefined,
+      },
+      () => {
+        const h = deepseekAdapter.health();
+        expect(h.ok).toBe(false);
+        expect(h.detail).toMatch(/npm i -g @deepseek-ai\/dsh/);
+      },
+    );
+  });
+
+  test("health: binary but no key → not ok, tells operator to export DEEPSEEK_API_KEY", () => {
+    const { bin } = makeFakeDsh("nokey");
+    withEnv({ CURSOR_ROUTE_DSH_BIN: bin, DEEPSEEK_API_KEY: undefined }, () => {
+      const h = deepseekAdapter.health();
+      expect(h.ok).toBe(false);
+      expect(h.detail).toMatch(/DEEPSEEK_API_KEY/);
+    });
+  });
+
+  test("health: binary + key → ok", () => {
+    const { bin } = makeFakeDsh("ok");
+    withEnv({ CURSOR_ROUTE_DSH_BIN: bin, DEEPSEEK_API_KEY: "test-key" }, () => {
+      const h = deepseekAdapter.health();
+      expect(h.ok).toBe(true);
+      expect(h.binary).toBe(bin);
+    });
+  });
+
+  test("buildLaunch: flash default patch next to prompt; key only in env", () => {
+    const { dir, bin } = makeFakeDsh("flash");
+    const promptFile = join(dir, "job.prompt");
+    writeFileSync(promptFile, "ping");
+    withEnv(
+      {
+        CURSOR_ROUTE_DSH_BIN: bin,
+        DEEPSEEK_API_KEY: "test-key",
+        CURSOR_ROUTE_DS_MODEL: undefined,
+        ANTHROPIC_MODEL: undefined,
+      },
+      () => {
+        const plan = deepseekAdapter.buildLaunch({
+          promptFile,
+          cwd: dir,
+          alwaysApprove: true,
+        });
+        expect(plan.command).toContain("--profile headless");
+        expect(plan.command).toContain("--patch");
+        expect(plan.command).toContain("$(cat");
+        expect(plan.command).not.toContain("npx");
+        expect(plan.command).not.toContain("test-key");
+        expect(plan.env?.DSH_PERMISSION_MODE).toBe("danger-full-access");
+        expect(plan.env?.DEEPSEEK_API_KEY).toBe("test-key");
+        const patch = readFileSync(join(dir, "job.dsh-patch.yml"), "utf8");
+        expect(patch).toContain("agent-default-model");
+        expect(patch).toContain("provider: deepseek-official");
+        expect(patch).toContain("deepseek-v4-flash");
+        expect(patch).not.toContain("deepseek-v4-pro");
+        expect(patch).not.toContain("test-key");
+      },
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("buildLaunch: pro model → deepseek-v4-pro in patch", () => {
+    const { dir, bin } = makeFakeDsh("pro");
+    const promptFile = join(dir, "job.prompt");
+    writeFileSync(promptFile, "ping");
+    withEnv(
+      {
+        CURSOR_ROUTE_DSH_BIN: bin,
+        DEEPSEEK_API_KEY: "test-key",
+        CURSOR_ROUTE_DS_MODEL: undefined,
+        ANTHROPIC_MODEL: undefined,
+      },
+      () => {
+        deepseekAdapter.buildLaunch({
+          promptFile,
+          cwd: dir,
+          alwaysApprove: true,
+          model: "pro",
+        });
+        const patch = readFileSync(join(dir, "job.dsh-patch.yml"), "utf8");
+        expect(patch).toContain("deepseek-v4-pro");
+        expect(patch).not.toContain("deepseek-v4-flash");
+      },
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("buildLaunch: preserves deepseek-v4-pro[1m] in patch via modelId", () => {
+    const { dir, bin } = makeFakeDsh("pro1m");
+    const promptFile = join(dir, "job.prompt");
+    writeFileSync(promptFile, "ping");
+    withEnv(
+      {
+        CURSOR_ROUTE_DSH_BIN: bin,
+        DEEPSEEK_API_KEY: "test-key",
+        CURSOR_ROUTE_DS_MODEL: undefined,
+        ANTHROPIC_MODEL: undefined,
+      },
+      () => {
+        deepseekAdapter.buildLaunch({
+          promptFile,
+          cwd: dir,
+          alwaysApprove: true,
+          model: "pro",
+          modelId: "deepseek-v4-pro[1m]",
+        });
+        const patch = readFileSync(join(dir, "job.dsh-patch.yml"), "utf8");
+        expect(patch).toContain("deepseek-v4-pro[1m]");
+      },
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("buildLaunch: alwaysApprove false (--ask) → workspace-write", () => {
+    const { dir, bin } = makeFakeDsh("ask");
+    const promptFile = join(dir, "job.prompt");
+    writeFileSync(promptFile, "ping");
+    withEnv(
+      {
+        CURSOR_ROUTE_DSH_BIN: bin,
+        DEEPSEEK_API_KEY: "test-key",
+        CURSOR_ROUTE_DS_MODEL: undefined,
+        ANTHROPIC_MODEL: undefined,
+      },
+      () => {
+        const plan = deepseekAdapter.buildLaunch({
+          promptFile,
+          cwd: dir,
+          alwaysApprove: false,
+        });
+        expect(plan.env?.DSH_PERMISSION_MODE).toBe("workspace-write");
+        expect(plan.env?.DSH_PERMISSION_MODE).not.toBe("danger-full-access");
+      },
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("buildLaunch: CURSOR_ROUTE_ASK=1 opts out even when alwaysApprove true", () => {
+    const { dir, bin } = makeFakeDsh("ask-env");
+    const promptFile = join(dir, "job.prompt");
+    writeFileSync(promptFile, "ping");
+    withEnv(
+      {
+        CURSOR_ROUTE_DSH_BIN: bin,
+        DEEPSEEK_API_KEY: "test-key",
+        CURSOR_ROUTE_ASK: "1",
+        CURSOR_ROUTE_DS_MODEL: undefined,
+        ANTHROPIC_MODEL: undefined,
+      },
+      () => {
+        const plan = deepseekAdapter.buildLaunch({
+          promptFile,
+          cwd: dir,
+          alwaysApprove: true,
+        });
+        expect(plan.env?.DSH_PERMISSION_MODE).toBe("workspace-write");
+        expect(plan.alwaysApprove).toBe(false);
+      },
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("buildLaunch: missing binary falls back to plain `dsh` for dry-run", () => {
+    const { dir } = makeFakeDsh("nobin");
+    const promptFile = join(dir, "job.prompt");
+    writeFileSync(promptFile, "ping");
+    // Point PATH at an empty dir so `command -v dsh` finds nothing,
+    // regardless of what the dev machine has installed.
+    const empty = join(dir, "empty");
+    mkdirSync(empty, { recursive: true });
+    withEnv(
+      {
+        CURSOR_ROUTE_DSH_BIN: undefined,
+        DEEPSEEK_API_KEY: undefined,
+        PATH: empty,
+        CURSOR_ROUTE_DS_MODEL: undefined,
+        ANTHROPIC_MODEL: undefined,
+      },
+      () => {
+        const plan = deepseekAdapter.buildLaunch({
+          promptFile,
+          cwd: dir,
+          alwaysApprove: true,
+          dryRun: true,
+        });
+        expect(plan.command).toContain("'dsh' --profile headless");
+        expect(plan.command).toContain("--patch");
+        expect(plan.env?.DEEPSEEK_API_KEY).toBeUndefined();
+      },
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("buildLaunch: non-.prompt promptFile does not overwrite the prompt", () => {
+    const { dir, bin } = makeFakeDsh("noprompt-ext");
+    const promptFile = join(dir, "job");
+    writeFileSync(promptFile, "keep-me");
+    withEnv(
+      {
+        CURSOR_ROUTE_DSH_BIN: bin,
+        DEEPSEEK_API_KEY: "test-key",
+        CURSOR_ROUTE_DS_MODEL: undefined,
+        ANTHROPIC_MODEL: undefined,
+      },
+      () => {
+        expect(patchPathForPrompt(promptFile)).toBe(`${promptFile}.dsh-patch.yml`);
+        deepseekAdapter.buildLaunch({
+          promptFile,
+          cwd: dir,
+          alwaysApprove: true,
+        });
+        expect(readFileSync(promptFile, "utf8")).toBe("keep-me");
+        expect(existsSync(`${promptFile}.dsh-patch.yml`)).toBe(true);
+      },
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("buildLaunch: rejects modelId that would break YAML", () => {
+    const { dir, bin } = makeFakeDsh("badid");
+    const promptFile = join(dir, "job.prompt");
+    writeFileSync(promptFile, "ping");
+    withEnv(
+      {
+        CURSOR_ROUTE_DSH_BIN: bin,
+        DEEPSEEK_API_KEY: "test-key",
+        CURSOR_ROUTE_DS_MODEL: undefined,
+        ANTHROPIC_MODEL: undefined,
+      },
+      () => {
+        expect(() =>
+          deepseekAdapter.buildLaunch({
+            promptFile,
+            cwd: dir,
+            alwaysApprove: true,
+            model: "flash",
+            modelId: "x\n    injected: true",
+          }),
+        ).toThrow(/Invalid DeepSeek model id/);
+      },
+    );
+    rmSync(dir, { recursive: true, force: true });
   });
 });
 
@@ -290,23 +610,38 @@ describe("health", () => {
   test("returns structured report", () => {
     const r = runHealth();
     expect(r.product).toBe("cursor-route");
-    expect(r.version).toBe("0.1.7");
+    expect(r.version).toBe("0.1.8");
     expect(r.checks.length).toBeGreaterThan(3);
     expect(r.checks.some((c) => c.name === "tmux")).toBe(true);
     expect(r.checks.some((c) => c.name === "cursor_cli")).toBe(true);
   });
 
+  test("config version is 0.1.8", () => {
+    expect(config.version).toBe("0.1.8");
+  });
+
   test("OR-gate: ok can be true while worker:deepseek is false", () => {
-    const prev = process.env.CURSOR_ROUTE_RELAXED;
+    const prev = {
+      relaxed: process.env.CURSOR_ROUTE_RELAXED,
+      bin: process.env.CURSOR_ROUTE_DSH_BIN,
+      key: process.env.DEEPSEEK_API_KEY,
+    };
     process.env.CURSOR_ROUTE_RELAXED = "1";
+    // Force deepseek unhealthy even on machines that have a real dsh + key.
+    process.env.CURSOR_ROUTE_DSH_BIN = join(tmpdir(), `missing-dsh-${process.pid}`);
+    delete process.env.DEEPSEEK_API_KEY;
     try {
       const r = runHealth();
       const ds = r.checks.find((c) => c.name === "worker:deepseek");
       expect(ds?.ok).toBe(false);
       expect(r.ok).toBe(true);
     } finally {
-      if (prev === undefined) delete process.env.CURSOR_ROUTE_RELAXED;
-      else process.env.CURSOR_ROUTE_RELAXED = prev;
+      if (prev.relaxed === undefined) delete process.env.CURSOR_ROUTE_RELAXED;
+      else process.env.CURSOR_ROUTE_RELAXED = prev.relaxed;
+      if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_DSH_BIN;
+      else process.env.CURSOR_ROUTE_DSH_BIN = prev.bin;
+      if (prev.key === undefined) delete process.env.DEEPSEEK_API_KEY;
+      else process.env.DEEPSEEK_API_KEY = prev.key;
     }
   });
 

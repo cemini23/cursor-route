@@ -37,7 +37,7 @@ export interface Job {
   status: JobStatus;
   worker: WorkerKind;
   lane?: Lane;
-  /** Mid-lane DeepSeek model alias (flash|pro). Only set for claude-ds. */
+  /** Mid-lane DeepSeek model alias (flash|pro). Set for claude-ds and deepseek. */
   model?: DsModelAlias;
   prompt: string;
   cwd: string;
@@ -231,7 +231,7 @@ export interface StartOptions {
   prompt: string;
   worker?: WorkerKind;
   lane?: Lane;
-  /** Mid-lane DeepSeek: flash (default) | pro. Ignored by grok/openrouter. */
+  /** Mid-lane DeepSeek: flash (default) | pro (claude-ds + deepseek). Ignored by grok/openrouter. */
   model?: DsModelAlias;
   /** Concrete DeepSeek id (preserves pro[1m]). Derived from --model / env when unset. */
   modelId?: string;
@@ -284,7 +284,7 @@ export function startJob(opts: StartOptions): {
 
   let model: DsModelAlias | undefined;
   let modelId: string | undefined;
-  if (worker === "claude-ds") {
+  if (worker === "claude-ds" || worker === "deepseek") {
     if (opts.model) {
       model = opts.model;
       modelId = opts.modelId ?? DS_MODEL_IDS[opts.model];
@@ -312,6 +312,7 @@ export function startJob(opts: StartOptions): {
       alwaysApprove,
       model,
       modelId,
+      dryRun: Boolean(opts.dryRun),
     });
   } catch (e) {
     try {
@@ -493,7 +494,7 @@ export function cleanJobs(olderThanDays = 7): number {
         t < cutoff &&
         (job.status === "completed" || job.status === "failed" || job.status === "killed")
       ) {
-        for (const ext of [".json", ".prompt", ".log"] as const) {
+        for (const ext of [".json", ".prompt", ".log", ".dsh-patch.yml"] as const) {
           const fp = underJobsDir(id, ext);
           if (existsSync(fp)) unlinkSync(fp);
         }

@@ -1,9 +1,9 @@
 ---
 title: cursor-route workspace — working brief (edit in place)
 repo: ~/Projects/cursor-route
-npm: cursor-route@0.1.7 (LIVE on npm latest)
+npm: cursor-route@0.1.8 (LIVE on npm latest)
 created: 2026-08-12
-updated: 2026-08-13
+updated: 2026-08-14
 ---
 
 # cursor-route — living brief
@@ -24,7 +24,7 @@ Cursor Agent plans. Workers run in tmux via `cursor-route`:
 
 Always-approve on (`--ask` / `CURSOR_ROUTE_ASK=1` to opt out). Jobs live in `~/.local/share/cursor-route/jobs`, not in this clone.
 
-Install: `npm i -g cursor-route` → **0.1.7**. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
+Install: `npm i -g cursor-route` → **0.1.8**. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
 
 ## Open (edit / check off)
 
@@ -33,8 +33,9 @@ Install: `npm i -g cursor-route` → **0.1.7**. Release notes: [CHANGELOG.md](..
   - [x] add `--model flash|pro` on `start`
   - [x] document Grok **auth** ≠ usage-out (`grok login`) vs quota → Pro stand-in
 - [x] **Skill `route-orch`** — Flash/Pro table in `skills/` + `.cursor/skills/`
-- [x] **Official DeepSeek Harness** — `deepseek` adapter slot present; mid stays on claude-ds
+- [x] **Official DeepSeek Harness** — `deepseek` adapter slot present; `@deepseek-ai/dsh` 0.1.0-rc.6 (2026-08-13, github.com/deepseek-ai/deepseek-harness, MIT) is a developer-preview plugin kernel (web UI + `dsh --profile headless "job"`), not a Claude Code replacement; mid does not swap
 - [x] **0.1.7 debug fixes** — env default wired through `startJob`; Anthropic hatch omits DS ids; preserve `[1m]`
+- [x] **Experimental `--worker deepseek`** — 0.1.8: real dsh adapter (`dsh --profile headless` + per-job Cordis patch pins the model; never writes `~/.dsh/settings.yaml`). Always-approve → `DSH_PERMISSION_MODE=danger-full-access`, `--ask` → `workspace-write`; key via env only. Health ✓ needs `dsh` + `DEEPSEEK_API_KEY` (override `CURSOR_ROUTE_DSH_BIN`). Mid stays **claude-ds**.
 - [ ] **Hero GIF** — still outstanding; dry-run fixture ships as the substitute for now (`docs/fixtures/hero-demo.log` — see `docs/DEMO_GIF.md`)
 - [x] **Do not** paste private `ROUTE_KIT`, SIP, prod paths, or hang-watchdog env into this public repo
 
@@ -44,7 +45,7 @@ Install: `npm i -g cursor-route` → **0.1.7**. Release notes: [CHANGELOG.md](..
 |------|------|
 | `src/cli.ts` | `health` / `start` / `jobs` / `capture` / `send` / `kill` |
 | `src/adapters/claude-ds.ts` | Mid worker; DeepSeek URL required; `--model` → `-Model` |
-| `src/adapters/deepseek.ts` | Reserved unreleased harness slot |
+| `src/adapters/deepseek.ts` | Experimental dsh worker (`--worker deepseek`; mid stays claude-ds) |
 | `src/adapters/grok.ts` | Hard worker |
 | `src/adapters/openrouter.ts` | Easy worker |
 | `skills/route-orch/SKILL.md` | Cursor skill — spawn CLI, do not implement in-session |
@@ -61,3 +62,5 @@ Install: `npm i -g cursor-route` → **0.1.7**. Release notes: [CHANGELOG.md](..
 | 2026-08-12 | Grok debug → 0.1.7: env DS default, Anthropic hatch, `[1m]` preserve. |
 | 2026-08-13 | Hero demo dry-run fixture + docs: `docs/fixtures/generate-hero-demo.sh` → `hero-demo.log`; README Demo, DEMO_GIF.md, demo-notes pointer. Real GIF still open. |
 | 2026-08-13 | GPTSOL fixes: scrub inherited env/paths, stable job ids, ignore `docs/briefs/handoffs/`, GIF checkbox wording. |
+| 2026-08-14 | DeepSeek Harness eval: `@deepseek-ai/dsh` 0.1.0-rc.6 is a developer-preview plugin kernel, not a mid replacement; `--worker deepseek` stays unhealthy; mid remains claude-ds (docs-only, no version bump). |
+| 2026-08-14 | Experimental `--worker deepseek` wired to official dsh (headless + per-job patch + `DSH_PERMISSION_MODE` + key-via-env); `--model` applies to claude-ds + deepseek; mid stays claude-ds → 0.1.8 LIVE. |

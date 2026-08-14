@@ -1,8 +1,8 @@
 $ cursor-route --version
-0.1.7
+0.1.8
 
 $ CURSOR_ROUTE_RELAXED=1 cursor-route health
-cursor-route v0.1.7
+cursor-route v0.1.8
 health: OK
 
   ✓ tmux             ok
@@ -11,7 +11,7 @@ health: OK
   ✓ worker:grok      ok (auth checked at first start — run grok login if jobs fail) @ ~/.grok/bin/grok
   ✓ worker:claude-ds ok (claude-ds (DeepSeek shim); default model deepseek-v4-flash) @ ~/.local/bin/claude-ds
   ✗ worker:openrouter OPENROUTER_API_KEY not set — export your OpenRouter key (easy lane model defaults to openrouter/free) @ node '~/Projects/cursor-route/dist/openrouter-run.js'
-  ✗ worker:deepseek  unreleased — mid lane uses claude-ds (DeepSeek behind Claude Code). See README.
+  ✗ worker:deepseek  dsh (@deepseek-ai/dsh) not found — install: npm i -g @deepseek-ai/dsh. Mid default remains claude-ds.
   ✓ cursor_cli       optional ok (agent on PATH) — v0 supervisor is Cursor skill, not CLI
   ✓ relaxed          CURSOR_ROUTE_RELAXED=1 — tmux optional (headless OK)
   ✓ jobs_dir         ~/.local/share/cursor-route/jobs
