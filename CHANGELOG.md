@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Docs: `route-orch` skill adds **Eval & skill hygiene** — external eval contract (AutoDesign): never rewrite Verify / Success criteria mid-run to make a failing job look green (capture + exit status are the contract); skill misevolution: no auto-edit / promote skill variants from worker trajectories without operator HITL (write-time approval ≠ safe retrieval later); verify fail → prefer reconsidering the plan/definition over grinding the same tactic, with stage attribution when possible (spawn vs execute vs verify). Mid stays `claude-ds`; `--worker deepseek` remains experimental. Docs only — no version bump.
+
 ## 0.1.8 — 2026-08-14
 
 - Experimental `--worker deepseek`: official DeepSeek Harness (`dsh`, `@deepseek-ai/dsh`) runs headless — `dsh --profile headless` with a per-job Cordis patch pinning the model. Not a mid default: `laneWorkers.mid` stays `claude-ds`.

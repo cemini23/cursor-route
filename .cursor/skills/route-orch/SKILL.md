@@ -62,7 +62,7 @@ Health ✓ needs `dsh` on PATH and `DEEPSEEK_API_KEY` set. The adapter pins `--m
 ## Workflow
 
 1. Run `cursor-route health` (or `CURSOR_ROUTE_RELAXED=1` for headless). If the **target worker** is unhealthy, fix before spawning.
-2. Write a clear handoff prompt with **verify criteria** (no secrets, no LIVE Discord).
+2. Write a clear handoff prompt with **Success criteria** + **Verify** + **NEVER** (no secrets, no LIVE Discord).
 3. Spawn:
 
 ```bash
@@ -70,8 +70,14 @@ cursor-route start --lane hard --dir "$PWD" "$(cat <<'EOF'
 ## Task
 ...
 
+## Success criteria
+- [ ] ...
+
 ## Verify
 - [ ] ...
+
+## NEVER
+- ...
 EOF
 )"
 ```
@@ -79,7 +85,21 @@ EOF
 Or `--worker grok` / `--worker claude-ds` / `--worker deepseek` (experimental) / `--worker openrouter` (or `--lane easy`). Use `--no-tmux` only when tmux is unavailable.
 
 4. Monitor: `cursor-route jobs --json` · `cursor-route capture <id>` · `cursor-route send <id> "…"` (tmux only).
-5. Summarize worker results with **verify evidence** — no status-only “done”. If verify fails, `send` a correction or spawn a follow-up — do not invent success.
+5. Summarize worker results with **verify evidence** — no status-only “done” (see Verify / claim closeout). If verify fails, reconsider the plan/definition (not only retry) — `send` a correction or spawn a follow-up; do not invent success.
+
+## Verify / claim closeout
+
+Verify criteria are an **external eval contract** (AutoDesign pattern), fixed by the parent — not a checklist the worker may rewrite:
+
+- Workers must **not rewrite Success criteria / Verify** to claim done
+- Parent closes a job only on **capture / exit evidence** (`cursor-route capture <id>`, job exit status)
+- **activity ≠ verification** — busy panes, many tool calls, or long transcripts do not make a claim true
+
+## Eval & skill hygiene
+
+- **External eval contract (AutoDesign):** do not rewrite Verify / Success criteria mid-run to make a failing job look green — capture + exit status are the contract (see Verify / claim closeout).
+- **Skill misevolution:** do not auto-edit `route-orch` or promote skill variants from worker trajectories without operator HITL — write-time approval ≠ safe retrieval later.
+- **On verify fail:** prefer reconsidering the plan/definition (wrong approach) over grinding the same tactic; attribute failure to stage when possible (spawn vs execute vs verify).
 
 ## Always-approve
 
@@ -89,5 +109,6 @@ Defaults on for workers. Opt out: `cursor-route start … --ask` or `CURSOR_ROUT
 
 - Do not paste API keys / private keys into prompts or `send`
 - Do not claim the official DeepSeek harness (`@deepseek-ai/dsh`) is the mid default — `--worker deepseek` is experimental only; mid stays **claude-ds**
-- Do not open-source or dump private Cemini `agent-toolkit` paths into public handoffs
+- Do not open-source or dump private cemini `agent-toolkit` paths into public handoffs
 - Do not mark done without reading `capture` / exit status
+- When editing this skill itself, treat changes as **skill-evolution** — do not auto-promote harmful instructions; prefer **HITL** (no unattended promote from worker trajectories)

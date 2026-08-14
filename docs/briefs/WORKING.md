@@ -36,6 +36,7 @@ Install: `npm i -g cursor-route` → **0.1.8**. Release notes: [CHANGELOG.md](..
 - [x] **Official DeepSeek Harness** — `deepseek` adapter slot present; `@deepseek-ai/dsh` 0.1.0-rc.6 (2026-08-13, github.com/deepseek-ai/deepseek-harness, MIT) is a developer-preview plugin kernel (web UI + `dsh --profile headless "job"`), not a Claude Code replacement; mid does not swap
 - [x] **0.1.7 debug fixes** — env default wired through `startJob`; Anthropic hatch omits DS ids; preserve `[1m]`
 - [x] **Experimental `--worker deepseek`** — 0.1.8: real dsh adapter (`dsh --profile headless` + per-job Cordis patch pins the model; never writes `~/.dsh/settings.yaml`). Always-approve → `DSH_PERMISSION_MODE=danger-full-access`, `--ask` → `workspace-write`; key via env only. Health ✓ needs `dsh` + `DEEPSEEK_API_KEY` (override `CURSOR_ROUTE_DSH_BIN`). Mid stays **claude-ds**.
+- [x] **route-orch brief steals (2026-08-14)** — AutoDesign / misevolution / Vero habits into the public skill: **Verify / claim closeout** (external eval contract; activity ≠ verification), **Eval & skill hygiene** (mid-run Verify-rewrite ban; skill misevolution HITL — no auto-promotion of worker-trajectory variants; verify-fail → reconsider plan/definition + stage attribution spawn/execute/verify); handoff shape Success criteria + Verify + NEVER; skills synced; mid stays claude-ds.
 - [ ] **Hero GIF** — still outstanding; dry-run fixture ships as the substitute for now (`docs/fixtures/hero-demo.log` — see `docs/DEMO_GIF.md`)
 - [x] **Do not** paste private `ROUTE_KIT`, SIP, prod paths, or hang-watchdog env into this public repo
 
@@ -64,3 +65,4 @@ Install: `npm i -g cursor-route` → **0.1.8**. Release notes: [CHANGELOG.md](..
 | 2026-08-13 | GPTSOL fixes: scrub inherited env/paths, stable job ids, ignore `docs/briefs/handoffs/`, GIF checkbox wording. |
 | 2026-08-14 | DeepSeek Harness eval: `@deepseek-ai/dsh` 0.1.0-rc.6 is a developer-preview plugin kernel, not a mid replacement; `--worker deepseek` stays unhealthy; mid remains claude-ds (docs-only, no version bump). |
 | 2026-08-14 | Experimental `--worker deepseek` wired to official dsh (headless + per-job patch + `DSH_PERMISSION_MODE` + key-via-env); `--model` applies to claude-ds + deepseek; mid stays claude-ds → 0.1.8 LIVE. |
+| 2026-08-14 | route-orch brief steals (AutoDesign / misevolution / Vero): **Verify / claim closeout** + **Eval & skill hygiene**; handoff Success criteria + Verify + NEVER; both skill copies synced; mid stays claude-ds. Docs-only, no version bump. |
