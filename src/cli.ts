@@ -22,6 +22,7 @@ import {
   cleanJobs,
   jobPaths,
   refreshStatus,
+  jobEvidence,
 } from "./jobs.ts";
 import {
   capturePane,
@@ -39,11 +40,11 @@ Cursor stays the brain. Grok CLI + DeepSeek (claude-ds) + OpenRouter (easy) are 
 
 Usage:
   cursor-route --version
-  cursor-route health [--json]
+  cursor-route health [--json]          # JSON includes lanes.mid (DeepSeek proof)
   cursor-route start <prompt> [options]
   cursor-route start --prompt-file <path> [options]
   cursor-route jobs [--json] [--limit N]
-  cursor-route status <jobId> [--json]
+  cursor-route status <jobId> [--json]  # JSON includes evidence spawn/execute/verify
   cursor-route capture <jobId> [lines]
   cursor-route send <jobId> <message>
   cursor-route attach <jobId>
@@ -389,12 +390,14 @@ async function main() {
           }
         })())
       : sessionExists(job.tmuxSession);
-    const view = { ...job, sessionAlive: alive };
+    const evidence = jobEvidence(job, alive);
+    const view = { ...job, sessionAlive: alive, evidence };
     if (json) console.log(JSON.stringify(view, null, 2));
     else {
       console.log(
         `${job.id}  ${job.status}  worker=${job.worker}${job.model ? `  model=${job.model}` : ""}  sessionAlive=${alive}`,
       );
+      console.log("evidence: spawn/execute/verify (claim=unverified)");
       if (job.error) console.log(`error: ${job.error}`);
     }
     return;

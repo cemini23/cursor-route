@@ -91,10 +91,10 @@ Working notes for this repo (edit in place): [docs/briefs/WORKING.md](./docs/bri
 
 | Command | Description |
 |---------|-------------|
-| `health` | Gate #1 — tmux, runtime, workers |
+| `health` | Gate #1 — tmux, runtime, workers; proves `lane:mid` is DeepSeek (`lanes.mid` in `--json`) |
 | `start <prompt>` | Spawn worker job (`--worker` / `--lane` / `--model` / `--dir` / `--ask` / `--dry-run` / `--no-tmux`) |
 | `jobs [--json]` | List jobs |
-| `status <id>` | Job + sessionAlive |
+| `status <id>` | Job + sessionAlive; `--json` includes evidence tree (`spawn` / `execute` / `verify`) |
 | `capture <id> [n]` | Last n pane/log lines |
 | `send <id> <msg>` | Mid-task redirect (tmux send-keys) |
 | `attach <id>` | Print `tmux attach` hint |
@@ -113,10 +113,10 @@ docs/fixtures/generate-hero-demo.sh      # regenerate docs/fixtures/hero-demo.lo
 
 ```text
 $ cursor-route --version
-0.1.8
+0.1.9
 
 $ CURSOR_ROUTE_RELAXED=1 cursor-route health
-cursor-route v0.1.8
+cursor-route v0.1.9
 health: OK
 
 $ cursor-route start --lane mid --model flash --dry-run "Add a unit test for shellQuote"
@@ -140,7 +140,7 @@ A real hero GIF is still pending — recording steps live in [docs/DEMO_GIF.md](
 | `mid` | `claude-ds` | Default implement on DeepSeek (**Flash** by default) |
 | `hard` | `grok` | Hard implement on Grok CLI |
 
-Always-approve is **on** by default. Opt out: `--ask` or `CURSOR_ROUTE_ASK=1`.
+Always-approve is **on** by default for **coding worktrees only**. It does not authorize LIVE Discord, trading, or irreversible SaaS. Opt out: `--ask` or `CURSOR_ROUTE_ASK=1`.
 
 ### Mid models (Flash vs Pro)
 
@@ -163,7 +163,7 @@ export CURSOR_ROUTE_DS_MODEL=pro   # also honors ANTHROPIC_MODEL; --model overri
 
 ## DeepSeek setup (the cheap mid-lane — this is the point)
 
-`cursor-route` mid lane runs **DeepSeek**, not Anthropic. Claude Code is only the terminal harness; bills go to DeepSeek when `ANTHROPIC_BASE_URL` points at them.
+`cursor-route` mid lane runs **DeepSeek**, not Anthropic. Claude Code is only the terminal harness; bills go to DeepSeek when `ANTHROPIC_BASE_URL` points at them. `cursor-route health` shows `lane:mid` ✓ only when DeepSeek is proven (`claude-ds` / `deepseek-claude` shim, or stock `claude` with DeepSeek `ANTHROPIC_BASE_URL`) — `CURSOR_ROUTE_ALLOW_ANTHROPIC=1` is not proof.
 
 **Recommended (official DeepSeek → Claude Code):**
 
@@ -176,7 +176,7 @@ export ANTHROPIC_AUTH_TOKEN=YOUR_DEEPSEEK_API_KEY   # from platform.deepseek.com
 export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash
 export CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash
 
-cursor-route health          # worker:claude-ds should be ✓
+cursor-route health          # worker:claude-ds should be ✓; `lane:mid` is ✓ only when DeepSeek is proven
 cursor-route start --lane mid "…"                 # Flash (default)
 cursor-route start --lane mid --model pro "…"     # Pro when you need it
 ```

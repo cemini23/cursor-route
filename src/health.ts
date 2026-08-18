@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
 import { allAdapters } from "./adapters/index.ts";
+import { isMidDeepSeekProven, midDeepSeekProofDetail } from "./adapters/claude-ds.ts";
 import { config } from "./config.ts";
 import { isTmuxAvailable } from "./tmux.ts";
 import { commandExists } from "./util.ts";
@@ -13,6 +14,9 @@ export interface HealthReport {
     ok: boolean;
     detail: string;
   }>;
+  lanes: {
+    mid: { worker: "claude-ds"; deepseek: boolean; detail: string };
+  };
 }
 
 export function runHealth(): HealthReport {
@@ -58,6 +62,15 @@ export function runHealth(): HealthReport {
     });
   }
 
+  // Informational: mid is proven DeepSeek (not the overall OR-gate).
+  const midOk = isMidDeepSeekProven();
+  const midDetail = midDeepSeekProofDetail();
+  checks.push({
+    name: "lane:mid",
+    ok: midOk,
+    detail: midDetail,
+  });
+
   // Optional supervisor probe (v0 skill-only; Cursor CLI agent is informational)
   const agentBin =
     (commandExists("agent") && "agent") ||
@@ -99,6 +112,9 @@ export function runHealth(): HealthReport {
     product: config.product,
     version: config.version,
     checks,
+    lanes: {
+      mid: { worker: "claude-ds", deepseek: midOk, detail: midDetail },
+    },
   };
 }
 
@@ -118,5 +134,10 @@ export function printHealth(report: HealthReport, asJson: boolean): void {
     console.log("");
     console.log("Fix the ✗ items, then re-run: cursor-route health");
     console.log("Tip: start with one worker (grok OR claude-ds) before parallel demos.");
+  } else if (report.checks.some((c) => c.name === "lane:mid" && !c.ok)) {
+    console.log("");
+    console.log(
+      "Tip: health OK without a DeepSeek mid — --lane mid will fail until lane:mid is ✓.",
+    );
   }
 }

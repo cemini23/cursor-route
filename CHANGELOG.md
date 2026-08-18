@@ -2,7 +2,16 @@
 
 ## Unreleased
 
-- Docs: `route-orch` skill adds **Eval & skill hygiene** — external eval contract (AutoDesign): never rewrite Verify / Success criteria mid-run to make a failing job look green (capture + exit status are the contract); skill misevolution: no auto-edit / promote skill variants from worker trajectories without operator HITL (write-time approval ≠ safe retrieval later); verify fail → prefer reconsidering the plan/definition over grinding the same tactic, with stage attribution when possible (spawn vs execute vs verify). Mid stays `claude-ds`; `--worker deepseek` remains experimental. Docs only — no version bump.
+_(none)_
+
+## 0.1.9 — 2026-08-18
+
+- Health proves mid DeepSeek: dedicated `lane:mid` check is ✓ only when mid is a `claude-ds` / `deepseek-claude` shim or stock `claude` with DeepSeek `ANTHROPIC_BASE_URL`. `CURSOR_ROUTE_ALLOW_ANTHROPIC=1` is not proof. Overall `ok` still uses the existing OR-gate (any worker + `CURSOR_ROUTE_RELAXED=1`); grok-only installs stay OK with `lane:mid` ✗ plus a fix tip.
+- Health JSON includes `lanes.mid.{ worker, deepseek, detail }` (`worker` is always `"claude-ds"`).
+- `status --json` adds an evidence tree (`spawn` / `execute` / `verify`). `verify.claim` is always `"unverified"` — the parent must capture; status never auto-greens.
+- Headless pid liveness: if `ps` is unreadable (`EPERM` / non-zero), treat the pid as **alive** (fail-safe), not dead — avoids false-completed kills on sandboxed `ps`.
+- `route-orch` skill: health-before-mid, evidence-tree closeout, always-approve is coding-worktrees-only (not LIVE Discord/trading), do not fork the mid harness; `--worker deepseek` stays experimental / cheap-to-abandon.
+- Docs: `route-orch` **Eval & skill hygiene** (folded from Unreleased) — external eval contract (AutoDesign): never rewrite Verify / Success criteria mid-run to make a failing job look green (capture + exit status are the contract); skill misevolution: no auto-edit / promote skill variants from worker trajectories without operator HITL (write-time approval ≠ safe retrieval later); verify fail → prefer reconsidering the plan/definition over grinding the same tactic, with stage attribution when possible (spawn vs execute vs verify). Mid stays `claude-ds`.
 
 ## 0.1.8 — 2026-08-14
 

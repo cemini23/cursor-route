@@ -124,6 +124,25 @@ function resolveClaudeDs(): { binary: string; mode: string } | null {
   return null;
 }
 
+/**
+ * Mid lane is proven DeepSeek only via shim (`claude-ds` / `deepseek-claude`)
+ * or stock `claude` routed to DeepSeek. The Anthropic escape hatch is not proof.
+ */
+export function isMidDeepSeekProven(): boolean {
+  const resolved = resolveClaudeDs();
+  if (!resolved) return false;
+  return !resolved.mode.startsWith("claude → Anthropic");
+}
+
+/** Human detail for health `lane:mid` (mode when proven; install hint otherwise). */
+export function midDeepSeekProofDetail(): string {
+  const resolved = resolveClaudeDs();
+  if (!resolved || resolved.mode.startsWith("claude → Anthropic")) {
+    return "mid not proven DeepSeek — install claude-ds / set ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic. CURSOR_ROUTE_ALLOW_ANTHROPIC=1 is not proof.";
+  }
+  return `DeepSeek proven (${resolved.mode})`;
+}
+
 function pickModel(requested?: DsModelAlias, modelId?: string): { alias: DsModelAlias; id: string } {
   if (modelId) {
     const alias = requested ?? resolveDsModel(modelId).alias;

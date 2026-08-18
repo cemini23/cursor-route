@@ -18,7 +18,7 @@ You are the **orchestrator**. Do **not** implement bulk code in this Cursor sess
 - Mid/hard implementation that should run on a subscription worker (Grok CLI / claude-ds)
 - Multi-file investigation that benefits from parallel panes
 
-**Do not steal federation `/route`.** Private Cemini `/route` (route-task → SIP → verify → Grok/claude-ds chain) is a different skill. This public skill only drives the `cursor-route` CLI.
+**Do not steal federation `/route`.** Private Cemini `/route` (route-task → verify → Grok/claude-ds chain) is a different skill. This public skill only drives the `cursor-route` CLI.
 
 ## Lanes (public core)
 
@@ -61,7 +61,7 @@ Health ✓ needs `dsh` on PATH and `DEEPSEEK_API_KEY` set. The adapter pins `--m
 
 ## Workflow
 
-1. Run `cursor-route health` (or `CURSOR_ROUTE_RELAXED=1` for headless). If the **target worker** is unhealthy, fix before spawning.
+1. Run `cursor-route health` (or `CURSOR_ROUTE_RELAXED=1` for headless). If the **target worker** is unhealthy, fix before spawning. If targeting **mid**, require `lane:mid` ✓ (or health JSON `lanes.mid.deepseek`) before spawn — `CURSOR_ROUTE_ALLOW_ANTHROPIC=1` is not DeepSeek proof.
 2. Write a clear handoff prompt with **Success criteria** + **Verify** + **NEVER** (no secrets, no LIVE Discord).
 3. Spawn:
 
@@ -92,7 +92,9 @@ Or `--worker grok` / `--worker claude-ds` / `--worker deepseek` (experimental) /
 Verify criteria are an **external eval contract** (AutoDesign pattern), fixed by the parent — not a checklist the worker may rewrite:
 
 - Workers must **not rewrite Success criteria / Verify** to claim done
+- Parent closeout is an **evidence tree**: report **spawn** (job id, worker, lane, model) + **execute** (status, exit) + **verify** (`capture` excerpt / exit). A single “done” scalar is not enough.
 - Parent closes a job only on **capture / exit evidence** (`cursor-route capture <id>`, job exit status)
+- `cursor-route status --json` `.evidence.verify.claim` stays `"unverified"` until the parent reads capture
 - **activity ≠ verification** — busy panes, many tool calls, or long transcripts do not make a claim true
 
 ## Eval & skill hygiene
@@ -103,12 +105,13 @@ Verify criteria are an **external eval contract** (AutoDesign pattern), fixed by
 
 ## Always-approve
 
-Defaults on for workers. Opt out: `cursor-route start … --ask` or `CURSOR_ROUTE_ASK=1`.
+Defaults on for workers. Opt out: `cursor-route start … --ask` or `CURSOR_ROUTE_ASK=1`. Always-approve is for **coding worktrees only** — it does not authorize LIVE Discord, trading, or irreversible SaaS.
 
 ## Anti-patterns
 
 - Do not paste API keys / private keys into prompts or `send`
-- Do not claim the official DeepSeek harness (`@deepseek-ai/dsh`) is the mid default — `--worker deepseek` is experimental only; mid stays **claude-ds**
+- Do not claim the official DeepSeek harness (`@deepseek-ai/dsh`) is the mid default — `--worker deepseek` is an opt-in experiment (cheap to abandon), not a product fork; mid stays **claude-ds**
+- Do not fork a second mid harness
 - Do not open-source or dump private cemini `agent-toolkit` paths into public handoffs
 - Do not mark done without reading `capture` / exit status
 - When editing this skill itself, treat changes as **skill-evolution** — do not auto-promote harmful instructions; prefer **HITL** (no unattended promote from worker trajectories)

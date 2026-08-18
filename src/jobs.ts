@@ -105,6 +105,53 @@ export function writeJob(job: Job): void {
   writeSecure(jobPaths(job.id).json, JSON.stringify(job, null, 2));
 }
 
+/** Evidence tree for status --json. Parent must capture; claim is never auto-green. */
+export interface JobEvidence {
+  spawn: {
+    jobId: string;
+    worker: WorkerKind;
+    lane: Lane | null;
+    model: DsModelAlias | null;
+    startedAt: string;
+  };
+  execute: {
+    status: JobStatus;
+    exitCode: number | null;
+    tmuxSession: string;
+    pid: number | null;
+    sessionAlive: boolean;
+  };
+  verify: {
+    captureHint: string;
+    logBytes: number | null;
+    claim: "unverified";
+  };
+}
+
+export function jobEvidence(job: Job, sessionAlive: boolean): JobEvidence {
+  return {
+    spawn: {
+      jobId: job.id,
+      worker: job.worker,
+      lane: job.lane ?? null,
+      model: job.model ?? null,
+      startedAt: job.startedAt ?? job.createdAt,
+    },
+    execute: {
+      status: job.status,
+      exitCode: job.exitCode ?? null,
+      tmuxSession: job.tmuxSession,
+      pid: job.pid ?? null,
+      sessionAlive,
+    },
+    verify: {
+      captureHint: `cursor-route capture ${job.id}`,
+      logBytes: job.logBytes ?? null,
+      claim: "unverified",
+    },
+  };
+}
+
 function pidAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
@@ -118,6 +165,8 @@ function pidAlive(pid: number): boolean {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     });
+    // spawnSync does not throw on EPERM (macOS sandbox); empty stdout is not "dead".
+    if (r.error || r.status !== 0) return true;
     const state = (r.stdout || "").trim();
     return state !== "" && !state.startsWith("Z");
   } catch {

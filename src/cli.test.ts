@@ -10,12 +10,17 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { resolveWorker, startJob } from "./jobs.ts";
+import { resolveWorker, startJob, jobEvidence, type Job } from "./jobs.ts";
 import { config, resolveDsModel, resolveDsModelAlias } from "./config.ts";
 import { shellQuote, newJobId } from "./util.ts";
 import { runHealth } from "./health.ts";
 import { looksLikeSecretMaterial, redactSecrets } from "./secrets.ts";
-import { isDeepSeekRouted, isDeepSeekBaseUrl, claudeDsAdapter } from "./adapters/claude-ds.ts";
+import {
+  isDeepSeekRouted,
+  isDeepSeekBaseUrl,
+  claudeDsAdapter,
+  isMidDeepSeekProven,
+} from "./adapters/claude-ds.ts";
 import { deepseekAdapter, patchPathForPrompt } from "./adapters/deepseek.ts";
 import { grokAdapter } from "./adapters/grok.ts";
 
@@ -610,14 +615,18 @@ describe("health", () => {
   test("returns structured report", () => {
     const r = runHealth();
     expect(r.product).toBe("cursor-route");
-    expect(r.version).toBe("0.1.8");
+    expect(r.version).toBe("0.1.9");
     expect(r.checks.length).toBeGreaterThan(3);
     expect(r.checks.some((c) => c.name === "tmux")).toBe(true);
     expect(r.checks.some((c) => c.name === "cursor_cli")).toBe(true);
+    const mid = r.checks.find((c) => c.name === "lane:mid");
+    expect(mid).toBeDefined();
+    expect(r.lanes.mid.worker).toBe("claude-ds");
+    expect(r.lanes.mid.deepseek).toBe(mid!.ok);
   });
 
-  test("config version is 0.1.8", () => {
-    expect(config.version).toBe("0.1.8");
+  test("config version is 0.1.9", () => {
+    expect(config.version).toBe("0.1.9");
   });
 
   test("OR-gate: ok can be true while worker:deepseek is false", () => {
@@ -656,5 +665,99 @@ describe("health", () => {
       if (prev === undefined) delete process.env.CURSOR_ROUTE_RELAXED;
       else process.env.CURSOR_ROUTE_RELAXED = prev;
     }
+  });
+
+  test("CURSOR_ROUTE_CLAUDE_DS_BIN pointing at an existing file proves mid DeepSeek", () => {
+    const prev = process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+    const fake = join(tmpdir(), `cr-mid-proof-${process.pid}`);
+    writeFileSync(fake, "#!/bin/sh\necho ok\n");
+    chmodSync(fake, 0o755);
+    process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = fake;
+    try {
+      expect(isMidDeepSeekProven()).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+      else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev;
+      rmSync(fake, { force: true });
+    }
+  });
+
+  test("Anthropic hatch is not DeepSeek proof (shim on PATH still is)", () => {
+    const shimDir = join(tmpdir(), `cr-mid-hatch-${process.pid}`);
+    mkdirSync(shimDir, { recursive: true });
+    const claude = join(shimDir, "claude");
+    writeFileSync(claude, "#!/bin/sh\necho ok\n");
+    chmodSync(claude, 0o755);
+
+    const prev = {
+      bin: process.env.CURSOR_ROUTE_CLAUDE_DS_BIN,
+      allow: process.env.CURSOR_ROUTE_ALLOW_ANTHROPIC,
+      base: process.env.ANTHROPIC_BASE_URL,
+      crBase: process.env.CURSOR_ROUTE_ANTHROPIC_BASE_URL,
+      path: process.env.PATH,
+    };
+    delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+    delete process.env.CURSOR_ROUTE_ANTHROPIC_BASE_URL;
+    process.env.ANTHROPIC_BASE_URL = "https://api.anthropic.com";
+    process.env.CURSOR_ROUTE_ALLOW_ANTHROPIC = "1";
+    process.env.PATH = `${shimDir}:/usr/bin:/bin`;
+    try {
+      const detail = claudeDsAdapter.health().detail;
+      if (detail.includes("Anthropic")) {
+        expect(isMidDeepSeekProven()).toBe(false);
+        const r = runHealth();
+        const mid = r.checks.find((c) => c.name === "lane:mid");
+        expect(mid?.ok).toBe(false);
+        expect(r.lanes.mid.deepseek).toBe(false);
+      } else {
+        // Real claude-ds / deepseek-claude on PATH is proof (hatch never engages).
+        expect(isMidDeepSeekProven()).toBe(true);
+      }
+    } finally {
+      if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+      else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev.bin;
+      if (prev.allow === undefined) delete process.env.CURSOR_ROUTE_ALLOW_ANTHROPIC;
+      else process.env.CURSOR_ROUTE_ALLOW_ANTHROPIC = prev.allow;
+      if (prev.base === undefined) delete process.env.ANTHROPIC_BASE_URL;
+      else process.env.ANTHROPIC_BASE_URL = prev.base;
+      if (prev.crBase === undefined) delete process.env.CURSOR_ROUTE_ANTHROPIC_BASE_URL;
+      else process.env.CURSOR_ROUTE_ANTHROPIC_BASE_URL = prev.crBase;
+      process.env.PATH = prev.path || "";
+      rmSync(shimDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("jobEvidence", () => {
+  test("verify.claim is always unverified; spawn/execute keys exist", () => {
+    const job: Job = {
+      id: "abcd1234",
+      schema: "cursor-route.job.v1",
+      status: "running",
+      worker: "claude-ds",
+      lane: "mid",
+      model: "flash",
+      prompt: "ping",
+      cwd: "/tmp",
+      alwaysApprove: true,
+      tmuxSession: "cursor-route-abcd1234",
+      createdAt: "2026-08-18T00:00:00.000Z",
+      startedAt: "2026-08-18T00:00:01.000Z",
+      logBytes: 42,
+    };
+    const ev = jobEvidence(job, true);
+    expect(ev.verify.claim).toBe("unverified");
+    expect(ev.verify.captureHint).toBe("cursor-route capture abcd1234");
+    expect(ev.verify.logBytes).toBe(42);
+    expect(ev.spawn.jobId).toBe("abcd1234");
+    expect(ev.spawn.worker).toBe("claude-ds");
+    expect(ev.spawn.lane).toBe("mid");
+    expect(ev.spawn.model).toBe("flash");
+    expect(ev.spawn.startedAt).toBe("2026-08-18T00:00:01.000Z");
+    expect(ev.execute.status).toBe("running");
+    expect(ev.execute.exitCode).toBe(null);
+    expect(ev.execute.tmuxSession).toBe("cursor-route-abcd1234");
+    expect(ev.execute.pid).toBe(null);
+    expect(ev.execute.sessionAlive).toBe(true);
   });
 });

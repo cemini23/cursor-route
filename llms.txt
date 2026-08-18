@@ -2,7 +2,7 @@
 
 > Cursor stays the planner. DeepSeek (mid), Grok CLI (hard), and OpenRouter free models (easy) run parallel coding workers in tmux.
 
-MIT CLI + Cursor skill. npm: https://www.npmjs.com/package/cursor-route (latest **0.1.8**)
+MIT CLI + Cursor skill. npm: https://www.npmjs.com/package/cursor-route (latest **0.1.9**)
 GitHub: https://github.com/cemini23/cursor-route
 
 ## FAQ
