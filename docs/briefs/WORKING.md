@@ -1,7 +1,7 @@
 ---
 title: cursor-route workspace — working brief (edit in place)
 repo: ~/Projects/cursor-route
-npm: cursor-route@0.1.9 (not published — this WorkDir only)
+npm: cursor-route@0.1.9 (LIVE on npm latest)
 created: 2026-08-12
 updated: 2026-08-18
 ---
@@ -24,7 +24,7 @@ Cursor Agent plans. Workers run in tmux via `cursor-route`:
 
 Always-approve on for coding worktrees (`--ask` / `CURSOR_ROUTE_ASK=1` to opt out) — not LIVE Discord/trading. Jobs live in `~/.local/share/cursor-route/jobs`, not in this clone.
 
-Install: `npm i -g cursor-route` → **0.1.9** once published. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
+Install: `npm i -g cursor-route` → **0.1.9**. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
 
 ## Open (edit / check off)
 
@@ -67,4 +67,4 @@ Install: `npm i -g cursor-route` → **0.1.9** once published. Release notes: [C
 | 2026-08-14 | DeepSeek Harness eval: `@deepseek-ai/dsh` 0.1.0-rc.6 is a developer-preview plugin kernel, not a mid replacement; `--worker deepseek` stays unhealthy; mid remains claude-ds (docs-only, no version bump). |
 | 2026-08-14 | Experimental `--worker deepseek` wired to official dsh (headless + per-job patch + `DSH_PERMISSION_MODE` + key-via-env); `--model` applies to claude-ds + deepseek; mid stays claude-ds → 0.1.8 LIVE. |
 | 2026-08-14 | route-orch brief steals (AutoDesign / misevolution / Vero): **Verify / claim closeout** + **Eval & skill hygiene**; handoff Success criteria + Verify + NEVER; both skill copies synced; mid stays claude-ds. Docs-only, no version bump. |
-| 2026-08-18 | Health `lane:mid` + `lanes.mid` prove DeepSeek; status evidence tree (`verify.claim` stays unverified); skill health-before-mid + closeout tree; mid stays claude-ds → 0.1.9 (not published). |
+| 2026-08-18 | Health `lane:mid` + `lanes.mid` prove DeepSeek; status evidence tree (`verify.claim` stays unverified); skill health-before-mid + closeout tree; mid stays claude-ds → 0.1.9 LIVE. |
