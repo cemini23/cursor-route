@@ -41,6 +41,9 @@ describe("resolveWorker", () => {
     expect(resolveWorker({ prompt: "x", lane: "mid", worker: "openrouter" })).toBe(
       "openrouter",
     );
+    expect(resolveWorker({ prompt: "x", lane: "mid", worker: "opencode" })).toBe(
+      "opencode",
+    );
   });
   test("default worker", () => {
     expect(resolveWorker({ prompt: "x" })).toBe(config.defaultWorker);
@@ -615,7 +618,7 @@ describe("health", () => {
   test("returns structured report", () => {
     const r = runHealth();
     expect(r.product).toBe("cursor-route");
-    expect(r.version).toBe("0.1.9");
+    expect(r.version).toBe("0.1.10");
     expect(r.checks.length).toBeGreaterThan(3);
     expect(r.checks.some((c) => c.name === "tmux")).toBe(true);
     expect(r.checks.some((c) => c.name === "cursor_cli")).toBe(true);
@@ -623,10 +626,32 @@ describe("health", () => {
     expect(mid).toBeDefined();
     expect(r.lanes.mid.worker).toBe("claude-ds");
     expect(r.lanes.mid.deepseek).toBe(mid!.ok);
+    expect(r.checks.some((c) => c.name === "worker:opencode")).toBe(true);
+    expect(r.checks.some((c) => c.name === "worker:deepseek")).toBe(true);
   });
 
-  test("config version is 0.1.9", () => {
-    expect(config.version).toBe("0.1.9");
+  test("config version is 0.1.10", () => {
+    expect(config.version).toBe("0.1.10");
+  });
+
+  test("OR-gate: ok can be true while worker:opencode is false", () => {
+    const prev = {
+      relaxed: process.env.CURSOR_ROUTE_RELAXED,
+      bin: process.env.CURSOR_ROUTE_OPENCODE_BIN,
+    };
+    process.env.CURSOR_ROUTE_RELAXED = "1";
+    process.env.CURSOR_ROUTE_OPENCODE_BIN = join(tmpdir(), `missing-oc-${process.pid}`);
+    try {
+      const r = runHealth();
+      const oc = r.checks.find((c) => c.name === "worker:opencode");
+      expect(oc?.ok).toBe(false);
+      expect(r.ok).toBe(true);
+    } finally {
+      if (prev.relaxed === undefined) delete process.env.CURSOR_ROUTE_RELAXED;
+      else process.env.CURSOR_ROUTE_RELAXED = prev.relaxed;
+      if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_OPENCODE_BIN;
+      else process.env.CURSOR_ROUTE_OPENCODE_BIN = prev.bin;
+    }
   });
 
   test("OR-gate: ok can be true while worker:deepseek is false", () => {

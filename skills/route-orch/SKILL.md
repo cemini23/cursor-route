@@ -2,10 +2,10 @@
 name: route-orch
 description: >-
   Delegate coding work from Cursor to parallel Grok CLI / claude-ds (DeepSeek) /
-  OpenRouter (easy lane) workers via cursor-route. Use when the user says
-  /route-orch, spawn workers, parallel agents with cursor-route, or explicitly
-  asks to outsource implementation to Grok/DeepSeek panes — not for private
-  Cemini /route.
+  OpenRouter (easy lane) / OpenCode (opt-in free) workers via cursor-route. Use
+  when the user says /route-orch, spawn workers, parallel agents with
+  cursor-route, or explicitly asks to outsource implementation to
+  Grok/DeepSeek/OpenCode panes — not for private Cemini /route.
 ---
 
 # route-orch (cursor-route)
@@ -14,8 +14,8 @@ You are the **orchestrator**. Do **not** implement bulk code in this Cursor sess
 
 ## When to activate
 
-- User says `/route-orch`, `spawn workers`, or asks for parallel Grok/DeepSeek via **cursor-route**
-- Mid/hard implementation that should run on a subscription worker (Grok CLI / claude-ds)
+- User says `/route-orch`, `spawn workers`, or asks for parallel Grok/DeepSeek/OpenCode via **cursor-route**
+- Mid/hard implementation that should run on a subscription worker (Grok CLI / claude-ds) or opt-in OpenCode free models
 - Multi-file investigation that benefits from parallel panes
 
 **Do not steal federation `/route`.** Private Cemini `/route` (route-task → verify → Grok/claude-ds chain) is a different skill. This public skill only drives the `cursor-route` CLI.
@@ -59,6 +59,20 @@ cursor-route start --worker deepseek --model pro --dir "$PWD" "…"   # --model 
 
 Health ✓ needs `dsh` on PATH and `DEEPSEEK_API_KEY` set. The adapter pins `--model` via a per-job `--patch` (never touches `~/.dsh/settings.yaml`); always-approve → `DSH_PERMISSION_MODE=danger-full-access`, `--ask` → `workspace-write`. The key never enters the command or patch.
 
+## Experimental: --worker opencode (free Zen)
+
+OpenCode as an opt-in **coding agent** on OpenCode Zen free models — **not a lane default** (mid stays `claude-ds`; easy stays OpenRouter chat). Use this to cut Grok / DeepSeek usage on implement work.
+
+```bash
+npm i -g opencode-ai
+opencode auth login
+cursor-route start --worker opencode --dir "$PWD" "…"
+cursor-route start --worker opencode --model free --dir "$PWD" "…"
+cursor-route start --worker opencode --model opencode/hy3-free --dir "$PWD" "…"
+```
+
+Health ✓ needs `opencode` on PATH (override `CURSOR_ROUTE_OPENCODE_BIN`). Default model is `opencode/big-pickle` (`CURSOR_ROUTE_OPENCODE_MODEL` / `--model free`). Always-approve → `opencode run --auto`; `--ask` omits `--auto`. Never rewrites `~/.config/opencode/opencode.json`. Free Zen models may log/train — keep secrets off this worker (same refuse gate as easy).
+
 ## Workflow
 
 1. Run `cursor-route health` (or `CURSOR_ROUTE_RELAXED=1` for headless). If the **target worker** is unhealthy, fix before spawning. If targeting **mid**, require `lane:mid` ✓ (or health JSON `lanes.mid.deepseek`) before spawn — `CURSOR_ROUTE_ALLOW_ANTHROPIC=1` is not DeepSeek proof.
@@ -82,7 +96,7 @@ EOF
 )"
 ```
 
-Or `--worker grok` / `--worker claude-ds` / `--worker deepseek` (experimental) / `--worker openrouter` (or `--lane easy`). Use `--no-tmux` only when tmux is unavailable.
+Or `--worker grok` / `--worker claude-ds` / `--worker deepseek` (experimental) / `--worker opencode` (opt-in free) / `--worker openrouter` (or `--lane easy`). Use `--no-tmux` only when tmux is unavailable.
 
 4. Monitor: `cursor-route jobs --json` · `cursor-route capture <id>` · `cursor-route send <id> "…"` (tmux only).
 5. Summarize worker results with **verify evidence** — no status-only “done” (see Verify / claim closeout). If verify fails, reconsider the plan/definition (not only retry) — `send` a correction or spawn a follow-up; do not invent success.
@@ -111,6 +125,7 @@ Defaults on for workers. Opt out: `cursor-route start … --ask` or `CURSOR_ROUT
 
 - Do not paste API keys / private keys into prompts or `send`
 - Do not claim the official DeepSeek harness (`@deepseek-ai/dsh`) is the mid default — `--worker deepseek` is an opt-in experiment (cheap to abandon), not a product fork; mid stays **claude-ds**
+- Do not claim OpenCode is the mid default — `--worker opencode` is opt-in for free Zen (or other) models; mid stays **claude-ds**
 - Do not fork a second mid harness
 - Do not open-source or dump private cemini `agent-toolkit` paths into public handoffs
 - Do not mark done without reading `capture` / exit status

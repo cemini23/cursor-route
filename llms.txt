@@ -1,14 +1,14 @@
 # cursor-route
 
-> Cursor stays the planner. DeepSeek (mid), Grok CLI (hard), and OpenRouter free models (easy) run parallel coding workers in tmux.
+> Cursor stays the planner. DeepSeek (mid), Grok CLI (hard), and OpenRouter free models (easy) run parallel coding workers in tmux. `--worker opencode` is an opt-in coding agent on OpenCode Zen free models.
 
-MIT CLI + Cursor skill. npm: https://www.npmjs.com/package/cursor-route (latest **0.1.9**)
+MIT CLI + Cursor skill. npm: https://www.npmjs.com/package/cursor-route (latest **0.1.10**)
 GitHub: https://github.com/cemini23/cursor-route
 
 ## FAQ
 
 ### What is cursor-route?
-cursor-route is a public MIT CLI and Cursor skill that runs parallel coding workers in tmux while Cursor remains the planner. DeepSeek handles the mid lane, Grok CLI handles the hard lane, and OpenRouter free models handle the easy lane (wording/drafts, non-secret prompts only).
+cursor-route is a public MIT CLI and Cursor skill that runs parallel coding workers in tmux while Cursor remains the planner. DeepSeek handles the mid lane, Grok CLI handles the hard lane, and OpenRouter free models handle the easy lane (wording/drafts, non-secret prompts only). `--worker opencode` is an opt-in coding agent (default `opencode/big-pickle`) — not a lane default.
 
 ### How is this different from Codex orchestrator?
 It uses the familiar strategist and worker-pane shape, but it is not a Codex clone. cursor-route uses Cursor as the planner and DeepSeek plus Grok CLI as workers. Codex is not required.
@@ -22,15 +22,19 @@ No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANT
 | `--model flash` (default) | `deepseek-v4-flash` | Cheap mid execute |
 | `--model pro` | `deepseek-v4-pro` | Harder mid / Grok usage stand-in |
 
+### How do I use OpenCode free models?
+Install OpenCode (`npm i -g opencode-ai`), run `opencode auth login`, then `cursor-route start --worker opencode "…"`. Default model is `opencode/big-pickle` (`--model free`). Mid stays `claude-ds`.
+
 ### How do I install?
 Run `npm i -g cursor-route`, install tmux if needed, then run `cursor-route health`. Copy the Cursor skill from `$(npm root -g)/cursor-route/skills/route-orch`. Source: https://github.com/cemini23/cursor-route
 
 ### Is it free?
-The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you. The easy lane can be free on OpenRouter's free-model route (`openrouter/free`).
+The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you. The easy lane can be free on OpenRouter's free-model route (`openrouter/free`). `--worker opencode` can use OpenCode Zen free models.
 
 ## Install
 
 - npm: `npm i -g cursor-route`
 - Health: `cursor-route health`
 - Mid: `cursor-route start --lane mid "…"` (Flash) · `--model pro` when needed
+- OpenCode (opt-in): `cursor-route start --worker opencode "…"`
 - Skill: `/route-orch` (Cursor)

@@ -133,7 +133,7 @@ export function printHealth(report: HealthReport, asJson: boolean): void {
   if (!report.ok) {
     console.log("");
     console.log("Fix the ✗ items, then re-run: cursor-route health");
-    console.log("Tip: start with one worker (grok OR claude-ds) before parallel demos.");
+    console.log("Tip: start with one worker (grok OR claude-ds OR opencode) before parallel demos.");
   } else if (report.checks.some((c) => c.name === "lane:mid" && !c.ok)) {
     console.log("");
     console.log(

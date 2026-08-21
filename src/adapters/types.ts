@@ -26,7 +26,7 @@ export interface Adapter {
     alwaysApprove: boolean;
     /** Mid-lane DeepSeek flash|pro (claude-ds + deepseek; ignored by grok/openrouter / Anthropic escape hatch). */
     model?: DsModelAlias;
-    /** Concrete DeepSeek model id for -Model/--model (preserves pro[1m]). */
+    /** Concrete DeepSeek id (preserves pro[1m]) or OpenCode provider/model. */
     modelId?: string;
     /** True on --dry-run: adapters may drop artifacts they just wrote (e.g. dsh patch). */
     dryRun?: boolean;

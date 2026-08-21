@@ -4,6 +4,15 @@
 
 _(none)_
 
+## 0.1.10 — 2026-08-21
+
+- Opt-in `--worker opencode`: OpenCode `run` as a coding agent that defaults to Zen free model `opencode/big-pickle` (alias `--model free`). Not a lane default — mid stays `claude-ds`, easy stays OpenRouter chat.
+- Always-approve → `opencode run --auto` (still honors explicit deny rules); `--ask` / `CURSOR_ROUTE_ASK=1` omits `--auto`. Never rewrites `~/.config/opencode/opencode.json`.
+- `--model provider/model` for opencode (env `CURSOR_ROUTE_OPENCODE_MODEL`); `flash|pro` still DeepSeek-only.
+- Health: `worker:opencode` ✓ when `opencode` is on PATH (override `CURSOR_ROUTE_OPENCODE_BIN`). Auth is `opencode auth login` at first start (same pattern as grok).
+- Dry-run works without opencode installed (falls back to plain `opencode` in the printed command); real starts stay gated by health.
+- Docs / `route-orch`: OpenCode is an opt-in usage-reduction worker, not a second mid harness. Free Zen models may log/train — non-secret prompts only.
+
 ## 0.1.9 — 2026-08-18
 
 - Health proves mid DeepSeek: dedicated `lane:mid` check is ✓ only when mid is a `claude-ds` / `deepseek-claude` shim or stock `claude` with DeepSeek `ANTHROPIC_BASE_URL`. `CURSOR_ROUTE_ALLOW_ANTHROPIC=1` is not proof. Overall `ok` still uses the existing OR-gate (any worker + `CURSOR_ROUTE_RELAXED=1`); grok-only installs stay OK with `lane:mid` ✗ plus a fix tip.

@@ -12,6 +12,7 @@ CURSOR_ROUTE_RELAXED=1 ./bin/cursor-route health   # without tmux
 ./bin/cursor-route start --dry-run --lane mid --model flash "ping"
 ./bin/cursor-route start --dry-run --lane mid --model pro "ping"
 ./bin/cursor-route start --dry-run --worker deepseek --model flash "ping"   # needs dsh + DEEPSEEK_API_KEY for real starts
+./bin/cursor-route start --dry-run --worker opencode --model free "ping"    # needs opencode for real starts
 ```
 
 Keep `skills/route-orch/SKILL.md` and `.cursor/skills/route-orch/SKILL.md` identical when editing the skill.
@@ -23,6 +24,7 @@ Keep `skills/route-orch/SKILL.md` and `.cursor/skills/route-orch/SKILL.md` ident
 - Prefer adapters over rewriting the job core
 - Always-approve defaults stay documented + opt-out (`--ask` / `CURSOR_ROUTE_ASK=1`)
 - Mid default is Flash; document Pro only as harder mid / Grok **usage** stand-in (not missing `grok login`)
+- OpenCode is opt-in (`--worker opencode`); do not make it a lane default — mid stays claude-ds
 
 ## Release checklist
 

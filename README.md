@@ -1,6 +1,6 @@
 # cursor-route
 
-**Cursor stays the brain. Grok CLI + DeepSeek (claude-ds) + OpenRouter (easy) are the parallel army.**
+**Cursor stays the brain. Grok CLI + DeepSeek (claude-ds) + OpenRouter (easy) + OpenCode (opt-in free) are the parallel army.**
 
 Lane-aware `/route` orchestration in tmux — not another multi-provider fleet, not a Codex clone.
 
@@ -17,7 +17,7 @@ cursor-route capture <jobId>
 |---------|-------|---------|------|
 | [codex-orchestrator](https://github.com/kingbootoshi/codex-orchestrator) | Claude Code | Codex | Viral tmux panes |
 | [CAO](https://github.com/awslabs/cli-agent-orchestrator) | Supervisor CLI | Many (incl. Cursor CLI) | Enterprise MCP + Web UI |
-| **cursor-route** | **Cursor Agent** | **Grok CLI + claude-ds + OpenRouter (easy)** | Cost-aware lanes you already pay for |
+| **cursor-route** | **Cursor Agent** | **Grok CLI + claude-ds + OpenRouter (easy) + OpenCode (opt-in)** | Cost-aware lanes you already pay for |
 
 If you already live in Cursor, X Premium (Grok CLI), and DeepSeek — stop paying a third coding agent just to parallelize.
 
@@ -29,6 +29,7 @@ If you already live in Cursor, X Premium (Grok CLI), and DeepSeek — stop payin
 | Grok CLI | X Premium | `--lane hard` implement |
 | DeepSeek via claude-ds | DeepSeek API / plan | `--lane mid` implement (**Flash** default; `--model pro` when needed) |
 | OpenRouter free models | OpenRouter API (free tier) | `--lane easy` wording/drafts — non-secret prompts only (see Security) |
+| OpenCode (opt-in) | OpenCode Zen free models | `--worker opencode` implement on free Zen (default `opencode/big-pickle`) |
 | Codex / extra Claude | Optional | Not required for v0 |
 
 Exact dollars vary — the point is **reuse subscriptions you already have**.
@@ -43,6 +44,7 @@ Exact dollars vary — the point is **reuse subscriptions you already have**.
 | [Bun](https://bun.sh) *(or Node 20+)* | Runs the CLI |
 | [Grok CLI](https://x.ai/cli) and/or Claude Code + DeepSeek (`claude-ds`) | Workers |
 | OpenRouter API key (`OPENROUTER_API_KEY`) | Easy lane (`--lane easy` / `--worker openrouter`) |
+| [OpenCode](https://opencode.ai) (`opencode` on PATH) | Opt-in `--worker opencode` (free Zen models) |
 | `script(1)` | Job logs (macOS/Linux) |
 
 ```bash
@@ -57,6 +59,7 @@ npm i -g cursor-route
 grok login                 # if using Grok
 # configure claude-ds — see DeepSeek setup below
 export OPENROUTER_API_KEY=...   # if using the easy lane (see OpenRouter setup below)
+# optional: npm i -g opencode-ai && opencode auth login   # --worker opencode
 
 cursor-route health
 # without tmux / workers (CI / headless infra smoke):
@@ -221,6 +224,36 @@ cursor-route start --lane easy "Rewrite this FAQ answer in 3 sentences"
 **wording/drafts without credentials**. The same refuse gate as every lane blocks
 key-shaped material in `start` / `send`, and the runner re-checks the prompt file.
 
+## OpenCode setup (opt-in free coding worker)
+
+`--worker opencode` runs [OpenCode](https://opencode.ai) as a **coding agent** on
+OpenCode Zen free models (default `opencode/big-pickle`). This is **not** a lane
+default — mid stays `claude-ds`; easy stays OpenRouter chat (no tools). Use it
+to burn fewer Grok / DeepSeek tokens on implement work.
+
+```bash
+npm i -g opencode-ai          # or: brew install opencode
+opencode auth login           # connect OpenCode Zen (or another provider)
+# optional:
+export CURSOR_ROUTE_OPENCODE_MODEL=opencode/big-pickle   # default; alias --model free
+
+cursor-route health                              # worker:opencode should be ✓
+cursor-route start --worker opencode "…"         # Big Pickle (free)
+cursor-route start --worker opencode --model free "…"
+cursor-route start --worker opencode --model opencode/hy3-free "…"
+```
+
+The adapter launches `opencode run --dir <cwd> --model <id>` with the prompt via
+`cat` (never interpolated). Always-approve maps to `--auto` (explicit `"deny"`
+rules still apply); `--ask` omits `--auto`. It never rewrites
+`~/.config/opencode/opencode.json`, so parallel jobs don't race. Override the
+binary with `CURSOR_ROUTE_OPENCODE_BIN`.
+
+**Non-secret prompts:** several Zen free models may log or train on prompts during
+their free period (see [OpenCode Zen](https://opencode.ai/docs/zen/) privacy notes).
+The same refuse gate as every lane still applies. `opencode/x-preview-f-free`
+(Ox Alpha) is the zero-retention free option if you need it.
+
 ## Jobs directory
 
 Jobs default to `~/.local/share/cursor-route/jobs` (override with `CURSOR_ROUTE_JOBS_DIR`).
@@ -235,7 +268,7 @@ This is **not** inside a git clone of this repo.
 ## FAQ
 
 **What is cursor-route?**  
-cursor-route is a public MIT CLI and Cursor skill that runs parallel coding workers in tmux while Cursor remains the planner. DeepSeek handles the mid lane, Grok CLI handles the hard lane, and OpenRouter free models handle the easy lane for wording/drafts.
+cursor-route is a public MIT CLI and Cursor skill that runs parallel coding workers in tmux while Cursor remains the planner. DeepSeek handles the mid lane, Grok CLI handles the hard lane, OpenRouter free models handle the easy lane for wording/drafts, and `--worker opencode` is an opt-in coding agent on OpenCode Zen free models.
 
 **How is this different from Codex orchestrator?**  
 It uses the familiar strategist and worker-pane shape, but it is not a Codex clone. cursor-route uses Cursor as the planner and DeepSeek plus Grok CLI as workers. Codex is not required.
@@ -247,7 +280,7 @@ No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANT
 Run `npm i -g cursor-route`, install tmux if needed, then run `cursor-route health`. The package is available at https://www.npmjs.com/package/cursor-route, and the source is at https://github.com/cemini23/cursor-route.
 
 **Is it free?**  
-The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you. The easy lane can be free on OpenRouter's free-model route (`openrouter/free`).
+The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you. The easy lane can be free on OpenRouter's free-model route (`openrouter/free`). `--worker opencode` can run OpenCode Zen free models (default `opencode/big-pickle`).
 
 ## Related
 
@@ -294,6 +327,7 @@ MIT © Cemini — see [LICENSE](LICENSE).
 
 - Homebrew tap
 - Stabilize the DeepSeek harness adapter (experimental `--worker deepseek` since 0.1.8)
+- Stabilize the OpenCode adapter (`--worker opencode` since 0.1.10)
 - Codebase map injection (`--map`)
 - Cursor CLI `agent` as alternate supervisor
 - Web UI / CAO-style MCP supervisor

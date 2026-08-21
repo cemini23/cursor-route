@@ -17,6 +17,7 @@ import {
   sessionName,
   defaultDsModelFromEnv,
   DS_MODEL_IDS,
+  openCodeModel,
   type Lane,
   type WorkerKind,
   type DsModelAlias,
@@ -37,8 +38,8 @@ export interface Job {
   status: JobStatus;
   worker: WorkerKind;
   lane?: Lane;
-  /** Mid-lane DeepSeek model alias (flash|pro). Set for claude-ds and deepseek. */
-  model?: DsModelAlias;
+  /** Worker model: flash|pro for claude-ds/deepseek; provider/model for opencode. */
+  model?: string;
   prompt: string;
   cwd: string;
   alwaysApprove: boolean;
@@ -111,7 +112,7 @@ export interface JobEvidence {
     jobId: string;
     worker: WorkerKind;
     lane: Lane | null;
-    model: DsModelAlias | null;
+    model: string | null;
     startedAt: string;
   };
   execute: {
@@ -282,7 +283,7 @@ export interface StartOptions {
   lane?: Lane;
   /** Mid-lane DeepSeek: flash (default) | pro (claude-ds + deepseek). Ignored by grok/openrouter. */
   model?: DsModelAlias;
-  /** Concrete DeepSeek id (preserves pro[1m]). Derived from --model / env when unset. */
+  /** Concrete DeepSeek id (preserves pro[1m]) or OpenCode provider/model. Derived from --model / env when unset. */
   modelId?: string;
   cwd?: string;
   alwaysApprove?: boolean;
@@ -331,15 +332,18 @@ export function startJob(opts: StartOptions): {
   const paths = jobPaths(id);
   writeSecure(paths.prompt, opts.prompt);
 
-  let model: DsModelAlias | undefined;
+  let model: string | undefined;
   let modelId: string | undefined;
+  let dsAlias: DsModelAlias | undefined;
   if (worker === "claude-ds" || worker === "deepseek") {
     if (opts.model) {
+      dsAlias = opts.model;
       model = opts.model;
       modelId = opts.modelId ?? DS_MODEL_IDS[opts.model];
     } else {
       try {
         const choice = defaultDsModelFromEnv();
+        dsAlias = choice.alias;
         model = choice.alias;
         modelId = opts.modelId ?? choice.id;
       } catch (e) {
@@ -351,6 +355,19 @@ export function startJob(opts: StartOptions): {
         return { ok: false, error: (e as Error).message };
       }
     }
+  } else if (worker === "opencode") {
+    try {
+      const ocModel = openCodeModel(opts.modelId);
+      model = ocModel;
+      modelId = ocModel;
+    } catch (e) {
+      try {
+        unlinkSync(paths.prompt);
+      } catch {
+        /* ignore */
+      }
+      return { ok: false, error: (e as Error).message };
+    }
   }
 
   let plan;
@@ -359,7 +376,7 @@ export function startJob(opts: StartOptions): {
       promptFile: paths.prompt,
       cwd,
       alwaysApprove,
-      model,
+      model: dsAlias,
       modelId,
       dryRun: Boolean(opts.dryRun),
     });

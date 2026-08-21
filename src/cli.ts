@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * cursor-route CLI — Cursor brain, Grok + DeepSeek + OpenRouter (easy) workers in tmux.
+ * cursor-route CLI — Cursor brain, Grok + DeepSeek + OpenRouter (easy) + OpenCode (opt-in) workers in tmux.
  */
 import { readFileSync, existsSync, realpathSync, statSync } from "node:fs";
 import { resolve, basename } from "node:path";
@@ -9,6 +9,7 @@ import {
   WORKERS,
   LANES,
   resolveDsModel,
+  openCodeModel,
   type WorkerKind,
   type Lane,
   type DsModelAlias,
@@ -36,7 +37,7 @@ import { looksLikeSecretMaterial, redactSecrets } from "./secrets.ts";
 function usage(exitCode = 0): never {
   console.log(`cursor-route v${config.version}
 
-Cursor stays the brain. Grok CLI + DeepSeek (claude-ds) + OpenRouter (easy) are the parallel army.
+Cursor stays the brain. Grok CLI + DeepSeek (claude-ds) + OpenRouter (easy) + OpenCode (opt-in free) are the parallel army.
 
 Usage:
   cursor-route --version
@@ -53,9 +54,9 @@ Usage:
   cursor-route clean [--days N]
 
 Start options:
-  --worker <grok|claude-ds|openrouter|deepseek>  Worker adapter (default: grok; deepseek = experimental official dsh)
+  --worker <grok|claude-ds|openrouter|deepseek|opencode>  Worker adapter (default: grok; deepseek/opencode = opt-in)
   --lane <easy|mid|hard>                Lane → worker (easy=openrouter, mid=claude-ds, hard=grok)
-  --model <flash|pro>                   Mid DeepSeek only (default: flash / CURSOR_ROUTE_DS_MODEL). Parsed for claude-ds + deepseek
+  --model <flash|pro|free|provider/model>  claude-ds/deepseek: flash|pro. opencode: free (default opencode/big-pickle) or provider/model
   --dir <path>                          Working directory (default: cwd)
   --ask                                 Disable always-approve for this job
   --dry-run                             Print launch command; do not start
@@ -72,10 +73,12 @@ Env:
   CURSOR_ROUTE_GROK_BIN              Override the grok binary path (tests / power users)
   CURSOR_ROUTE_CLAUDE_DS_BIN         Override the claude-ds binary path (tests / power users)
   CURSOR_ROUTE_DSH_BIN               Override the dsh binary path (tests / power users)
+  CURSOR_ROUTE_OPENCODE_BIN          Override the opencode binary path (tests / power users)
   DEEPSEEK_API_KEY                   DeepSeek API key (required for --worker deepseek)
   OPENROUTER_API_KEY                 OpenRouter key (required for --worker openrouter / --lane easy)
   CURSOR_ROUTE_OPENROUTER_MODEL      OpenRouter model (default: openrouter/free)
   OPENROUTER_BASE_URL                OpenRouter API base (default: https://openrouter.ai/api/v1)
+  CURSOR_ROUTE_OPENCODE_MODEL        OpenCode model (default: opencode/big-pickle); --model overrides
 `);
   process.exit(exitCode);
 }
@@ -171,6 +174,14 @@ function asDsModelChoice(v: unknown): { alias: DsModelAlias; id: string } | unde
   return resolveDsModel(v);
 }
 
+function asOpenCodeModel(v: unknown): string | undefined {
+  if (v === undefined || v === true) return undefined;
+  if (typeof v !== "string") {
+    throw new Error(`Invalid --model; expected provider/model (e.g. opencode/big-pickle) or free`);
+  }
+  return openCodeModel(v);
+}
+
 function refuseSecrets(text: string, context: string): void {
   if (looksLikeSecretMaterial(text)) {
     console.error(
@@ -253,8 +264,8 @@ async function main() {
 
     let model: DsModelAlias | undefined;
     let modelId: string | undefined;
-    // --model is DeepSeek-only (claude-ds mid lane + experimental deepseek worker);
-    // ignore (do not validate) for other workers
+    // --model: DeepSeek flash|pro for claude-ds/deepseek; provider/model (or free) for opencode;
+    // ignore (do not validate) for grok/openrouter
     if (f.model !== undefined && (resolvedWorker === "claude-ds" || resolvedWorker === "deepseek")) {
       try {
         const choice = asDsModelChoice(f.model);
@@ -262,6 +273,13 @@ async function main() {
           model = choice.alias;
           modelId = choice.id;
         }
+      } catch (e) {
+        console.error((e as Error).message);
+        process.exit(2);
+      }
+    } else if (f.model !== undefined && resolvedWorker === "opencode") {
+      try {
+        modelId = asOpenCodeModel(f.model);
       } catch (e) {
         console.error((e as Error).message);
         process.exit(2);
@@ -359,7 +377,7 @@ async function main() {
     } else {
       for (const j of jobs) {
         const age = j.startedAt || j.createdAt;
-        const modelCol = j.model ? j.model.padEnd(6) : "".padEnd(6);
+        const modelCol = j.model ? j.model.padEnd(22) : "".padEnd(22);
         console.log(
           `${j.id}  ${j.status.padEnd(10)}  ${j.worker.padEnd(10)}  ${modelCol}  ${age}  ${j.prompt.slice(0, 48).replace(/\n/g, " ")}`,
         );

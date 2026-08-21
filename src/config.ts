@@ -3,10 +3,11 @@ import { join } from "node:path";
 import { defaultJobsDir } from "./runtime.ts";
 
 /**
- * Workers with a live adapter. `deepseek` is the experimental official
- * DeepSeek Harness (dsh) — an opt-in worker, not a mid default.
+ * Workers with a live adapter. `deepseek` (official dsh) and `opencode`
+ * (free Zen / other models) are opt-in workers, not lane defaults.
+ * Mid stays on claude-ds; easy stays on openrouter (chat-only).
  */
-export type WorkerKind = "grok" | "claude-ds" | "openrouter" | "deepseek";
+export type WorkerKind = "grok" | "claude-ds" | "openrouter" | "deepseek" | "opencode";
 export type Lane = "easy" | "mid" | "hard";
 
 /** Public CLI aliases for mid-lane DeepSeek models. */
@@ -18,7 +19,7 @@ export interface DsModelChoice {
   id: string;
 }
 
-export const WORKERS: WorkerKind[] = ["grok", "claude-ds", "openrouter", "deepseek"];
+export const WORKERS: WorkerKind[] = ["grok", "claude-ds", "openrouter", "deepseek", "opencode"];
 export const LANES: Lane[] = ["easy", "mid", "hard"];
 export const DS_MODELS: DsModelAlias[] = ["flash", "pro"];
 
@@ -73,6 +74,37 @@ export function openRouterBaseUrl(): string {
   return process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
 }
 
+/**
+ * Default OpenCode model: OpenCode Zen Big Pickle (free, limited-time).
+ * Override: CURSOR_ROUTE_OPENCODE_MODEL or `--model provider/model`.
+ * Alias `free` resolves to this default (or the env override).
+ */
+export const OPENCODE_DEFAULT_MODEL = "opencode/big-pickle";
+
+/** Whitelist OpenCode `provider/model` ids (no spaces / injection). */
+export function assertOpenCodeModel(id: string): string {
+  if (!/^[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._\-:]+)+$/i.test(id)) {
+    throw new Error(
+      `Invalid OpenCode model ${id}; expected provider/model (e.g. opencode/big-pickle) or free`,
+    );
+  }
+  return id;
+}
+
+/**
+ * Resolve OpenCode `--model` / env to a concrete `provider/model` id.
+ * Empty or `free` → CURSOR_ROUTE_OPENCODE_MODEL, else OPENCODE_DEFAULT_MODEL.
+ */
+export function openCodeModel(raw?: string | null): string {
+  const v = (raw ?? "").trim();
+  if (!v || v.toLowerCase() === "free") {
+    const env = (process.env.CURSOR_ROUTE_OPENCODE_MODEL ?? "").trim();
+    if (!env || env.toLowerCase() === "free") return OPENCODE_DEFAULT_MODEL;
+    return assertOpenCodeModel(env);
+  }
+  return assertOpenCodeModel(v);
+}
+
 function maxConcurrentJobsFromEnv(): number {
   const raw = process.env.CURSOR_ROUTE_MAX_JOBS;
   if (raw) {
@@ -89,7 +121,7 @@ function maxConcurrentJobsFromEnv(): number {
  */
 export const config = {
   product: "cursor-route",
-  version: "0.1.9",
+  version: "0.1.10",
   get jobsDir(): string {
     return defaultJobsDir();
   },
@@ -97,7 +129,7 @@ export const config = {
   defaultWorker: "grok" as WorkerKind,
   /**
    * Lane → default worker (Cemini /route public core).
-   * `deepseek` is experimental only — mid stays on claude-ds.
+   * `deepseek` and `opencode` are opt-in only — mid stays on claude-ds.
    */
   laneWorkers: {
     easy: "openrouter" as WorkerKind,

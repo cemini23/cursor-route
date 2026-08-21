@@ -4,12 +4,14 @@ import { grokAdapter } from "./grok.ts";
 import { claudeDsAdapter } from "./claude-ds.ts";
 import { openRouterAdapter } from "./openrouter.ts";
 import { deepseekAdapter } from "./deepseek.ts";
+import { opencodeAdapter } from "./opencode.ts";
 
 const registry: Record<WorkerKind, Adapter> = {
   grok: grokAdapter,
   "claude-ds": claudeDsAdapter,
   openrouter: openRouterAdapter,
   deepseek: deepseekAdapter,
+  opencode: opencodeAdapter,
 };
 
 export function getAdapter(worker: WorkerKind): Adapter {
