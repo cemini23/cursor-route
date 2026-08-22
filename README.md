@@ -29,7 +29,7 @@ If you already live in Cursor, X Premium (Grok CLI), and DeepSeek — stop payin
 | Grok CLI | X Premium | `--lane hard` implement |
 | DeepSeek via claude-ds | DeepSeek API / plan | `--lane mid` implement (**Flash** default; `--model pro` when needed) |
 | OpenRouter free models | OpenRouter API (free tier) | `--lane easy` wording/drafts — non-secret prompts only (see Security) |
-| OpenCode (opt-in) | OpenCode Zen free models | `--worker opencode` implement on free Zen (default `opencode/big-pickle`) |
+| OpenCode (opt-in) | OpenCode Zen free models | `--worker opencode` implement on live Zen free pick (Ox Alpha while listed) |
 | Codex / extra Claude | Optional | Not required for v0 |
 
 Exact dollars vary — the point is **reuse subscriptions you already have**.
@@ -227,18 +227,20 @@ key-shaped material in `start` / `send`, and the runner re-checks the prompt fil
 ## OpenCode setup (opt-in free coding worker)
 
 `--worker opencode` runs [OpenCode](https://opencode.ai) as a **coding agent** on
-OpenCode Zen free models (default `opencode/big-pickle`). This is **not** a lane
-default — mid stays `claude-ds`; easy stays OpenRouter chat (no tools). Use it
-to burn fewer Grok / DeepSeek tokens on implement work.
+live OpenCode Zen free models (`--model free` fetches the catalog and ranks,
+same idea as the OpenRouter free picker). Ox Alpha (`opencode/x-preview-f-free`)
+wins while it is listed and free. This is **not** a lane default — mid stays
+`claude-ds`; easy stays OpenRouter chat (no tools). Use it to burn fewer Grok /
+DeepSeek tokens on implement work.
 
 ```bash
 npm i -g opencode-ai          # or: brew install opencode
 opencode auth login           # connect OpenCode Zen (or another provider)
-# optional:
-export CURSOR_ROUTE_OPENCODE_MODEL=opencode/big-pickle   # default; alias --model free
+# optional pin (skips the live catalog pick):
+export CURSOR_ROUTE_OPENCODE_MODEL=opencode/hy3-free
 
 cursor-route health                              # worker:opencode should be ✓
-cursor-route start --worker opencode "…"         # Big Pickle (free)
+cursor-route start --worker opencode "…"         # live Zen free pick
 cursor-route start --worker opencode --model free "…"
 cursor-route start --worker opencode --model opencode/hy3-free "…"
 ```
@@ -247,7 +249,8 @@ The adapter launches `opencode run --dir <cwd> --model <id>` with the prompt via
 `cat` (never interpolated). Always-approve maps to `--auto` (explicit `"deny"`
 rules still apply); `--ask` omits `--auto`. It never rewrites
 `~/.config/opencode/opencode.json`, so parallel jobs don't race. Override the
-binary with `CURSOR_ROUTE_OPENCODE_BIN`.
+binary with `CURSOR_ROUTE_OPENCODE_BIN`. `--model free` caches the ranked catalog
+for ~15 minutes (`CURSOR_ROUTE_ZEN_CACHE_MINUTES`).
 
 **Non-secret prompts:** several Zen free models may log or train on prompts during
 their free period (see [OpenCode Zen](https://opencode.ai/docs/zen/) privacy notes).
@@ -280,7 +283,7 @@ No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANT
 Run `npm i -g cursor-route`, install tmux if needed, then run `cursor-route health`. The package is available at https://www.npmjs.com/package/cursor-route, and the source is at https://github.com/cemini23/cursor-route.
 
 **Is it free?**  
-The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you. The easy lane can be free on OpenRouter's free-model route (`openrouter/free`). `--worker opencode` can run OpenCode Zen free models (default `opencode/big-pickle`).
+The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you. The easy lane can be free on OpenRouter's free-model route (`openrouter/free`). `--worker opencode` can run live OpenCode Zen free models (`--model free` ranks the catalog).
 
 ## Related
 

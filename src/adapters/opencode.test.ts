@@ -11,16 +11,36 @@ import {
 } from "../config.ts";
 
 describe("openCodeModel", () => {
-  test("defaults to OpenCode Zen Big Pickle", () => {
-    const prev = process.env.CURSOR_ROUTE_OPENCODE_MODEL;
+  test("defaults to live Zen pick (Ox Alpha fallback when offline)", () => {
+    const prev = {
+      model: process.env.CURSOR_ROUTE_OPENCODE_MODEL,
+      offline: process.env.CURSOR_ROUTE_ZEN_OFFLINE,
+      cache: process.env.CURSOR_ROUTE_ZEN_CACHE_PATH,
+      json: process.env.CURSOR_ROUTE_ZEN_CATALOG_JSON,
+      refresh: process.env.CURSOR_ROUTE_ZEN_REFRESH,
+    };
+    const cache = join(tmpdir(), `cr-oc-model-${process.pid}.json`);
     delete process.env.CURSOR_ROUTE_OPENCODE_MODEL;
+    delete process.env.CURSOR_ROUTE_ZEN_CATALOG_JSON;
+    process.env.CURSOR_ROUTE_ZEN_OFFLINE = "1";
+    process.env.CURSOR_ROUTE_ZEN_CACHE_PATH = cache;
+    process.env.CURSOR_ROUTE_ZEN_REFRESH = "1";
     try {
-      expect(openCodeModel()).toBe("opencode/big-pickle");
+      expect(openCodeModel()).toBe("opencode/x-preview-f-free");
       expect(openCodeModel("")).toBe(OPENCODE_DEFAULT_MODEL);
-      expect(openCodeModel("free")).toBe("opencode/big-pickle");
+      expect(openCodeModel("free")).toBe("opencode/x-preview-f-free");
     } finally {
-      if (prev === undefined) delete process.env.CURSOR_ROUTE_OPENCODE_MODEL;
-      else process.env.CURSOR_ROUTE_OPENCODE_MODEL = prev;
+      if (prev.model === undefined) delete process.env.CURSOR_ROUTE_OPENCODE_MODEL;
+      else process.env.CURSOR_ROUTE_OPENCODE_MODEL = prev.model;
+      if (prev.offline === undefined) delete process.env.CURSOR_ROUTE_ZEN_OFFLINE;
+      else process.env.CURSOR_ROUTE_ZEN_OFFLINE = prev.offline;
+      if (prev.cache === undefined) delete process.env.CURSOR_ROUTE_ZEN_CACHE_PATH;
+      else process.env.CURSOR_ROUTE_ZEN_CACHE_PATH = prev.cache;
+      if (prev.json === undefined) delete process.env.CURSOR_ROUTE_ZEN_CATALOG_JSON;
+      else process.env.CURSOR_ROUTE_ZEN_CATALOG_JSON = prev.json;
+      if (prev.refresh === undefined) delete process.env.CURSOR_ROUTE_ZEN_REFRESH;
+      else process.env.CURSOR_ROUTE_ZEN_REFRESH = prev.refresh;
+      rmSync(cache, { force: true });
     }
   });
 
@@ -100,14 +120,21 @@ describe("opencode adapter", () => {
   });
 
   test("health: binary → ok (auth at first start)", () => {
-    const { bin } = makeFake("ok");
-    withEnv({ CURSOR_ROUTE_OPENCODE_BIN: bin }, () => {
-      const h = opencodeAdapter.health();
-      expect(h.ok).toBe(true);
-      expect(h.binary).toBe(bin);
-      expect(h.detail).toContain("opencode/big-pickle");
-    });
-    rmSync(join(tmpdir(), `cr-oc-${process.pid}-ok`), { recursive: true, force: true });
+    const { dir, bin } = makeFake("ok");
+    withEnv(
+      {
+        CURSOR_ROUTE_OPENCODE_BIN: bin,
+        CURSOR_ROUTE_ZEN_CACHE_PATH: join(dir, "missing-cache.json"),
+      },
+      () => {
+        const h = opencodeAdapter.health();
+        expect(h.ok).toBe(true);
+        expect(h.binary).toBe(bin);
+        expect(h.detail).toContain("live Zen pick");
+        expect(h.detail).toContain("opencode/x-preview-f-free");
+      },
+    );
+    rmSync(dir, { recursive: true, force: true });
   });
 
   test("buildLaunch: default free model + --auto; prompt via cat", () => {
@@ -119,6 +146,10 @@ describe("opencode adapter", () => {
         CURSOR_ROUTE_OPENCODE_BIN: bin,
         CURSOR_ROUTE_OPENCODE_MODEL: undefined,
         CURSOR_ROUTE_ASK: undefined,
+        CURSOR_ROUTE_ZEN_OFFLINE: "1",
+        CURSOR_ROUTE_ZEN_CACHE_PATH: join(dir, "zen-cache.json"),
+        CURSOR_ROUTE_ZEN_REFRESH: "1",
+        CURSOR_ROUTE_ZEN_CATALOG_JSON: undefined,
       },
       () => {
         const plan = opencodeAdapter.buildLaunch({
@@ -128,7 +159,7 @@ describe("opencode adapter", () => {
         });
         expect(plan.command).toContain("run");
         expect(plan.command).toContain("--auto");
-        expect(plan.command).toContain("opencode/big-pickle");
+        expect(plan.command).toContain("opencode/x-preview-f-free");
         expect(plan.command).toContain("$(cat");
         expect(plan.command).toContain("--dir");
         expect(plan.alwaysApprove).toBe(true);
@@ -160,15 +191,24 @@ describe("opencode adapter", () => {
     const { dir, bin } = makeFake("ask-env");
     const promptFile = join(dir, "job.prompt");
     writeFileSync(promptFile, "ping");
-    withEnv({ CURSOR_ROUTE_OPENCODE_BIN: bin, CURSOR_ROUTE_ASK: "1" }, () => {
-      const plan = opencodeAdapter.buildLaunch({
-        promptFile,
-        cwd: dir,
-        alwaysApprove: true,
-      });
-      expect(plan.command).not.toContain("--auto");
-      expect(plan.alwaysApprove).toBe(false);
-    });
+    withEnv(
+      {
+        CURSOR_ROUTE_OPENCODE_BIN: bin,
+        CURSOR_ROUTE_ASK: "1",
+        CURSOR_ROUTE_ZEN_OFFLINE: "1",
+        CURSOR_ROUTE_ZEN_CACHE_PATH: join(dir, "zen-cache.json"),
+        CURSOR_ROUTE_ZEN_REFRESH: "1",
+      },
+      () => {
+        const plan = opencodeAdapter.buildLaunch({
+          promptFile,
+          cwd: dir,
+          alwaysApprove: true,
+        });
+        expect(plan.command).not.toContain("--auto");
+        expect(plan.alwaysApprove).toBe(false);
+      },
+    );
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -183,6 +223,9 @@ describe("opencode adapter", () => {
         CURSOR_ROUTE_OPENCODE_BIN: undefined,
         PATH: empty,
         CURSOR_ROUTE_OPENCODE_MODEL: undefined,
+        CURSOR_ROUTE_ZEN_OFFLINE: "1",
+        CURSOR_ROUTE_ZEN_CACHE_PATH: join(dir, "zen-cache.json"),
+        CURSOR_ROUTE_ZEN_REFRESH: "1",
       },
       () => {
         const plan = opencodeAdapter.buildLaunch({
@@ -208,10 +251,18 @@ describe("opencode adapter", () => {
       bin: process.env.CURSOR_ROUTE_OPENCODE_BIN,
       model: process.env.CURSOR_ROUTE_OPENCODE_MODEL,
       jobs: process.env.CURSOR_ROUTE_JOBS_DIR,
+      offline: process.env.CURSOR_ROUTE_ZEN_OFFLINE,
+      cache: process.env.CURSOR_ROUTE_ZEN_CACHE_PATH,
+      refresh: process.env.CURSOR_ROUTE_ZEN_REFRESH,
+      json: process.env.CURSOR_ROUTE_ZEN_CATALOG_JSON,
     };
     process.env.CURSOR_ROUTE_OPENCODE_BIN = bin;
     delete process.env.CURSOR_ROUTE_OPENCODE_MODEL;
+    delete process.env.CURSOR_ROUTE_ZEN_CATALOG_JSON;
     process.env.CURSOR_ROUTE_JOBS_DIR = join(dir, "jobs");
+    process.env.CURSOR_ROUTE_ZEN_OFFLINE = "1";
+    process.env.CURSOR_ROUTE_ZEN_CACHE_PATH = join(dir, "zen-cache.json");
+    process.env.CURSOR_ROUTE_ZEN_REFRESH = "1";
     try {
       const result = startJob({
         prompt: "ping",
@@ -221,7 +272,7 @@ describe("opencode adapter", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.job.worker).toBe("opencode");
-      expect(result.job.model).toBe("opencode/big-pickle");
+      expect(result.job.model).toBe("opencode/x-preview-f-free");
       expect(result.command).toContain("run");
       expect(result.command).toContain("--auto");
       expect(result.command).toContain("$(cat");
@@ -232,6 +283,14 @@ describe("opencode adapter", () => {
       else process.env.CURSOR_ROUTE_OPENCODE_MODEL = prev.model;
       if (prev.jobs === undefined) delete process.env.CURSOR_ROUTE_JOBS_DIR;
       else process.env.CURSOR_ROUTE_JOBS_DIR = prev.jobs;
+      if (prev.offline === undefined) delete process.env.CURSOR_ROUTE_ZEN_OFFLINE;
+      else process.env.CURSOR_ROUTE_ZEN_OFFLINE = prev.offline;
+      if (prev.cache === undefined) delete process.env.CURSOR_ROUTE_ZEN_CACHE_PATH;
+      else process.env.CURSOR_ROUTE_ZEN_CACHE_PATH = prev.cache;
+      if (prev.refresh === undefined) delete process.env.CURSOR_ROUTE_ZEN_REFRESH;
+      else process.env.CURSOR_ROUTE_ZEN_REFRESH = prev.refresh;
+      if (prev.json === undefined) delete process.env.CURSOR_ROUTE_ZEN_CATALOG_JSON;
+      else process.env.CURSOR_ROUTE_ZEN_CATALOG_JSON = prev.json;
       rmSync(dir, { recursive: true, force: true });
     }
   });

@@ -56,7 +56,7 @@ Usage:
 Start options:
   --worker <grok|claude-ds|openrouter|deepseek|opencode>  Worker adapter (default: grok; deepseek/opencode = opt-in)
   --lane <easy|mid|hard>                Lane → worker (easy=openrouter, mid=claude-ds, hard=grok)
-  --model <flash|pro|free|provider/model>  claude-ds/deepseek: flash|pro. opencode: free (default opencode/big-pickle) or provider/model
+  --model <flash|pro|free|provider/model>  claude-ds/deepseek: flash|pro. opencode: free (live Zen catalog pick) or provider/model
   --dir <path>                          Working directory (default: cwd)
   --ask                                 Disable always-approve for this job
   --dry-run                             Print launch command; do not start
@@ -78,7 +78,7 @@ Env:
   OPENROUTER_API_KEY                 OpenRouter key (required for --worker openrouter / --lane easy)
   CURSOR_ROUTE_OPENROUTER_MODEL      OpenRouter model (default: openrouter/free)
   OPENROUTER_BASE_URL                OpenRouter API base (default: https://openrouter.ai/api/v1)
-  CURSOR_ROUTE_OPENCODE_MODEL        OpenCode model (default: opencode/big-pickle); --model overrides
+  CURSOR_ROUTE_OPENCODE_MODEL        OpenCode model pin (unset or free = live Zen free pick); --model overrides
 `);
   process.exit(exitCode);
 }
@@ -177,7 +177,7 @@ function asDsModelChoice(v: unknown): { alias: DsModelAlias; id: string } | unde
 function asOpenCodeModel(v: unknown): string | undefined {
   if (v === undefined || v === true) return undefined;
   if (typeof v !== "string") {
-    throw new Error(`Invalid --model; expected provider/model (e.g. opencode/big-pickle) or free`);
+    throw new Error(`Invalid --model; expected provider/model (e.g. opencode/x-preview-f-free) or free`);
   }
   return openCodeModel(v);
 }

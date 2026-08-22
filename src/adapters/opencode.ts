@@ -2,13 +2,13 @@ import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { Adapter, WorkerHealth } from "./types.ts";
 import { shellQuote } from "../util.ts";
-import { openCodeModel, OPENCODE_DEFAULT_MODEL } from "../config.ts";
+import { openCodeModel, OPENCODE_DEFAULT_MODEL, cachedZenFreePick } from "../config.ts";
 
 /**
- * Opt-in OpenCode worker (`opencode run`) — a coding agent that can use
- * OpenCode Zen free models (default `opencode/big-pickle`) to cut Grok /
- * DeepSeek usage. Not a lane default: mid stays claude-ds; easy stays
- * OpenRouter chat (no tools).
+ * Opt-in OpenCode worker (`opencode run`) — a coding agent on live OpenCode
+ * Zen free models (`--model free` ranks the catalog; Ox Alpha wins while
+ * listed). Not a lane default: mid stays claude-ds; easy stays OpenRouter
+ * chat (no tools).
  *
  * We never rewrite ~/.config/opencode/opencode.json (parallel jobs would
  * race). Always-approve maps to `opencode run --auto` (still honors explicit
@@ -47,17 +47,13 @@ export const opencodeAdapter: Adapter = {
           "opencode not found — install: npm i -g opencode-ai (or brew install opencode). Then: opencode auth login. Mid default remains claude-ds.",
       };
     }
-    let defaultModel = OPENCODE_DEFAULT_MODEL;
-    try {
-      defaultModel = openCodeModel();
-    } catch {
-      /* invalid env — health still ok; startJob will fail loud */
-    }
+    // Health stays offline: show a fresh cache hit, else the Ox Alpha fallback.
+    const pick = cachedZenFreePick() || OPENCODE_DEFAULT_MODEL;
     return {
       worker: "opencode",
       ok: true,
       binary,
-      detail: `ok (opencode run; default model ${defaultModel}; auth at first start — opencode auth login if jobs fail; mid default remains claude-ds)`,
+      detail: `ok (opencode run; --model free = live Zen pick, now ${pick}; auth at first start — opencode auth login if jobs fail; mid default remains claude-ds)`,
     };
   },
   buildLaunch({ promptFile, cwd, alwaysApprove, modelId }) {

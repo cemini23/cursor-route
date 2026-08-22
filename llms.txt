@@ -2,13 +2,13 @@
 
 > Cursor stays the planner. DeepSeek (mid), Grok CLI (hard), and OpenRouter free models (easy) run parallel coding workers in tmux. `--worker opencode` is an opt-in coding agent on OpenCode Zen free models.
 
-MIT CLI + Cursor skill. npm: https://www.npmjs.com/package/cursor-route (latest **0.1.10**)
+MIT CLI + Cursor skill. npm: https://www.npmjs.com/package/cursor-route (latest **0.1.11**)
 GitHub: https://github.com/cemini23/cursor-route
 
 ## FAQ
 
 ### What is cursor-route?
-cursor-route is a public MIT CLI and Cursor skill that runs parallel coding workers in tmux while Cursor remains the planner. DeepSeek handles the mid lane, Grok CLI handles the hard lane, and OpenRouter free models handle the easy lane (wording/drafts, non-secret prompts only). `--worker opencode` is an opt-in coding agent (default `opencode/big-pickle`) — not a lane default.
+cursor-route is a public MIT CLI and Cursor skill that runs parallel coding workers in tmux while Cursor remains the planner. DeepSeek handles the mid lane, Grok CLI handles the hard lane, and OpenRouter free models handle the easy lane (wording/drafts, non-secret prompts only). `--worker opencode` is an opt-in coding agent (`--model free` ranks the live Zen catalog; Ox Alpha wins while listed) — not a lane default.
 
 ### How is this different from Codex orchestrator?
 It uses the familiar strategist and worker-pane shape, but it is not a Codex clone. cursor-route uses Cursor as the planner and DeepSeek plus Grok CLI as workers. Codex is not required.
@@ -23,7 +23,7 @@ No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANT
 | `--model pro` | `deepseek-v4-pro` | Harder mid / Grok usage stand-in |
 
 ### How do I use OpenCode free models?
-Install OpenCode (`npm i -g opencode-ai`), run `opencode auth login`, then `cursor-route start --worker opencode "…"`. Default model is `opencode/big-pickle` (`--model free`). Mid stays `claude-ds`.
+Install OpenCode (`npm i -g opencode-ai`), run `opencode auth login`, then `cursor-route start --worker opencode "…"`. `--model free` ranks live Zen free models (Ox Alpha first while listed). Mid stays `claude-ds`.
 
 ### How do I install?
 Run `npm i -g cursor-route`, install tmux if needed, then run `cursor-route health`. Copy the Cursor skill from `$(npm root -g)/cursor-route/skills/route-orch`. Source: https://github.com/cemini23/cursor-route

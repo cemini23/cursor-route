@@ -74,36 +74,12 @@ export function openRouterBaseUrl(): string {
   return process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
 }
 
-/**
- * Default OpenCode model: OpenCode Zen Big Pickle (free, limited-time).
- * Override: CURSOR_ROUTE_OPENCODE_MODEL or `--model provider/model`.
- * Alias `free` resolves to this default (or the env override).
- */
-export const OPENCODE_DEFAULT_MODEL = "opencode/big-pickle";
-
-/** Whitelist OpenCode `provider/model` ids (no spaces / injection). */
-export function assertOpenCodeModel(id: string): string {
-  if (!/^[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._\-:]+)+$/i.test(id)) {
-    throw new Error(
-      `Invalid OpenCode model ${id}; expected provider/model (e.g. opencode/big-pickle) or free`,
-    );
-  }
-  return id;
-}
-
-/**
- * Resolve OpenCode `--model` / env to a concrete `provider/model` id.
- * Empty or `free` → CURSOR_ROUTE_OPENCODE_MODEL, else OPENCODE_DEFAULT_MODEL.
- */
-export function openCodeModel(raw?: string | null): string {
-  const v = (raw ?? "").trim();
-  if (!v || v.toLowerCase() === "free") {
-    const env = (process.env.CURSOR_ROUTE_OPENCODE_MODEL ?? "").trim();
-    if (!env || env.toLowerCase() === "free") return OPENCODE_DEFAULT_MODEL;
-    return assertOpenCodeModel(env);
-  }
-  return assertOpenCodeModel(v);
-}
+export {
+  OPENCODE_DEFAULT_MODEL,
+  assertOpenCodeModel,
+  openCodeModel,
+  cachedZenFreePick,
+} from "./zen-free.ts";
 
 function maxConcurrentJobsFromEnv(): number {
   const raw = process.env.CURSOR_ROUTE_MAX_JOBS;
@@ -121,7 +97,7 @@ function maxConcurrentJobsFromEnv(): number {
  */
 export const config = {
   product: "cursor-route",
-  version: "0.1.10",
+  version: "0.1.11",
   get jobsDir(): string {
     return defaultJobsDir();
   },

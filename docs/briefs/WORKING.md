@@ -1,7 +1,7 @@
 ---
 title: cursor-route workspace — working brief (edit in place)
 repo: ~/Projects/cursor-route
-npm: cursor-route@0.1.10 (LIVE on npm latest)
+npm: cursor-route@0.1.11 (LIVE on npm latest)
 created: 2026-08-12
 updated: 2026-08-21
 ---
@@ -21,11 +21,11 @@ Cursor Agent plans. Workers run in tmux via `cursor-route`:
 | `easy` | OpenRouter free | Wording / drafts — non-secret prompts only |
 | `mid` | claude-ds (DeepSeek behind Claude Code) | Default implement (**Flash**; `--model pro` when needed) |
 | `hard` | Grok CLI | Hard implement |
-| opt-in | OpenCode | `--worker opencode` coding agent on Zen free models (default `opencode/big-pickle`) |
+| opt-in | OpenCode | `--worker opencode` coding agent; `--model free` ranks live Zen catalog (Ox Alpha first while listed) |
 
 Always-approve on for coding worktrees (`--ask` / `CURSOR_ROUTE_ASK=1` to opt out) — not LIVE Discord/trading. Jobs live in `~/.local/share/cursor-route/jobs`, not in this clone.
 
-Install: `npm i -g cursor-route` → **0.1.10**. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
+Install: `npm i -g cursor-route` → **0.1.11**. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
 
 ## Open (edit / check off)
 
@@ -39,7 +39,8 @@ Install: `npm i -g cursor-route` → **0.1.10**. Release notes: [CHANGELOG.md](.
 - [x] **Experimental `--worker deepseek`** — 0.1.8: real dsh adapter (`dsh --profile headless` + per-job Cordis patch pins the model; never writes `~/.dsh/settings.yaml`). Always-approve → `DSH_PERMISSION_MODE=danger-full-access`, `--ask` → `workspace-write`; key via env only. Health ✓ needs `dsh` + `DEEPSEEK_API_KEY` (override `CURSOR_ROUTE_DSH_BIN`). Mid stays **claude-ds**.
 - [x] **route-orch brief steals (2026-08-14)** — AutoDesign / misevolution / Vero habits into the public skill: **Verify / claim closeout** (external eval contract; activity ≠ verification), **Eval & skill hygiene** (mid-run Verify-rewrite ban; skill misevolution HITL — no auto-promotion of worker-trajectory variants; verify-fail → reconsider plan/definition + stage attribution spawn/execute/verify); handoff shape Success criteria + Verify + NEVER; skills synced; mid stays claude-ds.
 - [x] **Health proves mid DeepSeek + evidence tree** — 0.1.9: `lane:mid` ✓ only when DeepSeek is proven (shim or DeepSeek `ANTHROPIC_BASE_URL`; Anthropic hatch is not proof); health JSON `lanes.mid`; `status --json` evidence tree (`spawn` / `execute` / `verify.claim=unverified`); skill health-before-mid + evidence-tree closeout. Mid stays **claude-ds**.
-- [x] **Opt-in `--worker opencode`** — 0.1.10: `opencode run --dir` + `--model` (default Zen free `opencode/big-pickle` / `--model free`); always-approve → `--auto`; `--ask` omits it; never rewrites `~/.config/opencode/opencode.json`. Health ✓ needs `opencode` on PATH (`CURSOR_ROUTE_OPENCODE_BIN`). Mid stays **claude-ds**; easy stays OpenRouter chat. Free Zen may log/train — non-secret prompts.
+- [x] **Opt-in `--worker opencode`** — 0.1.10: `opencode run --dir` + `--model`; always-approve → `--auto`; `--ask` omits it; never rewrites `~/.config/opencode/opencode.json`. Health ✓ needs `opencode` on PATH (`CURSOR_ROUTE_OPENCODE_BIN`). Mid stays **claude-ds**; easy stays OpenRouter chat. Free Zen may log/train — non-secret prompts.
+- [x] **Live Zen free pick** — 0.1.11: `--model free` ranks `GET https://opencode.ai/zen/v1/models` (Ox Alpha first while listed; ~15 min cache; Ox Alpha fallback if fetch fails). Pin with `CURSOR_ROUTE_OPENCODE_MODEL`. Health stays offline (cache/fallback only).
 - [ ] **Hero GIF** — still outstanding; dry-run fixture ships as the substitute for now (`docs/fixtures/hero-demo.log` — see `docs/DEMO_GIF.md`)
 - [x] **Do not** paste private `ROUTE_KIT`, SIP, prod paths, or hang-watchdog env into this public repo
 
@@ -53,6 +54,7 @@ Install: `npm i -g cursor-route` → **0.1.10**. Release notes: [CHANGELOG.md](.
 | `src/adapters/grok.ts` | Hard worker |
 | `src/adapters/openrouter.ts` | Easy worker |
 | `src/adapters/opencode.ts` | Opt-in OpenCode worker (`--worker opencode`; mid stays claude-ds) |
+| `src/zen-free.ts` | Live Zen catalog rank for `--model free` |
 | `skills/route-orch/SKILL.md` | Cursor skill — spawn CLI, do not implement in-session |
 | `CHANGELOG.md` | Release notes |
 | `SECURITY.md` | Secret refuse gate |
@@ -72,3 +74,4 @@ Install: `npm i -g cursor-route` → **0.1.10**. Release notes: [CHANGELOG.md](.
 | 2026-08-14 | route-orch brief steals (AutoDesign / misevolution / Vero): **Verify / claim closeout** + **Eval & skill hygiene**; handoff Success criteria + Verify + NEVER; both skill copies synced; mid stays claude-ds. Docs-only, no version bump. |
 | 2026-08-18 | Health `lane:mid` + `lanes.mid` prove DeepSeek; status evidence tree (`verify.claim` stays unverified); skill health-before-mid + closeout tree; mid stays claude-ds → 0.1.9 LIVE. |
 | 2026-08-21 | Opt-in `--worker opencode` (Zen free `opencode/big-pickle`, `--auto`, no config rewrite); mid stays claude-ds → 0.1.10 LIVE. |
+| 2026-08-21 | Live Zen free pick (Ox Alpha first while listed; OpenRouter-style catalog rank) → 0.1.11 LIVE. |

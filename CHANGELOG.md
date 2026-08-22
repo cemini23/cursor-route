@@ -4,6 +4,12 @@
 
 _(none)_
 
+## 0.1.11 — 2026-08-21
+
+- `--worker opencode --model free` now **ranks the live OpenCode Zen catalog** (`GET https://opencode.ai/zen/v1/models`, cached ~15 min) instead of hardcoding `opencode/big-pickle`. Ox Alpha (`opencode/x-preview-f-free`) wins while it is listed and free; coding `-free` models next; `big-pickle` last among non-contributor free. Fetch-fail fallback is Ox Alpha.
+- Pin with `--model provider/model` or `CURSOR_ROUTE_OPENCODE_MODEL`. Tests/CI: `CURSOR_ROUTE_ZEN_OFFLINE=1` or `CURSOR_ROUTE_ZEN_CATALOG_JSON` (health never fetches — cache or fallback only).
+- Mid stays `claude-ds`; easy stays OpenRouter chat. OpenCode is still opt-in, not a lane default.
+
 ## 0.1.10 — 2026-08-21
 
 - Opt-in `--worker opencode`: OpenCode `run` as a coding agent that defaults to Zen free model `opencode/big-pickle` (alias `--model free`). Not a lane default — mid stays `claude-ds`, easy stays OpenRouter chat.

@@ -71,7 +71,7 @@ cursor-route start --worker opencode --model free --dir "$PWD" "…"
 cursor-route start --worker opencode --model opencode/hy3-free --dir "$PWD" "…"
 ```
 
-Health ✓ needs `opencode` on PATH (override `CURSOR_ROUTE_OPENCODE_BIN`). Default model is `opencode/big-pickle` (`CURSOR_ROUTE_OPENCODE_MODEL` / `--model free`). Always-approve → `opencode run --auto`; `--ask` omits `--auto`. Never rewrites `~/.config/opencode/opencode.json`. Free Zen models may log/train — keep secrets off this worker (same refuse gate as easy).
+Health ✓ needs `opencode` on PATH (override `CURSOR_ROUTE_OPENCODE_BIN`). `--model free` / unset ranks the live OpenCode Zen catalog (Ox Alpha first while listed; pin with `CURSOR_ROUTE_OPENCODE_MODEL` or `--model provider/model`). Always-approve → `opencode run --auto`; `--ask` omits `--auto`. Never rewrites `~/.config/opencode/opencode.json`. Free Zen models may log/train — keep secrets off this worker (same refuse gate as easy). Ox Alpha (`opencode/x-preview-f-free`) is the zero-retention free option.
 
 ## Workflow
 
