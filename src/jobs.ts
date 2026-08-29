@@ -353,13 +353,16 @@ export function startJob(opts: StartOptions): {
           dsAlias = choice.alias;
           model = choice.alias;
           modelId = opts.modelId ?? choice.id;
-        } catch (e) {
+        } catch {
           try {
             unlinkSync(paths.prompt);
           } catch {
             /* ignore */
           }
-          return { ok: false, error: (e as Error).message };
+          return {
+            ok: false,
+            error: `Invalid CURSOR_ROUTE_DS_MODEL/ANTHROPIC_MODEL value ${envRaw}; expected flash|pro|vision`,
+          };
         }
       } else if (promptLooksLikeVision(opts.prompt)) {
         dsAlias = "vision";

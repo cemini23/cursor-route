@@ -88,6 +88,7 @@ describe("promptLooksLikeVision", () => {
   test("plain coding prompts stay false", () => {
     expect(promptLooksLikeVision("fix the unit test")).toBe(false);
     expect(promptLooksLikeVision("Add a unit test for shellQuote")).toBe(false);
+    expect(promptLooksLikeVision("fix the ImageMagick wrapper")).toBe(false);
   });
 });
 
@@ -233,6 +234,43 @@ describe("startJob product path", () => {
       expect(result.job.model).toBe("pro");
       expect(result.command).toContain("deepseek-v4-pro");
       expect(result.command).not.toContain("deepseek-v4-flash");
+    } finally {
+      if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+      else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev.bin;
+      if (prev.ds === undefined) delete process.env.CURSOR_ROUTE_DS_MODEL;
+      else process.env.CURSOR_ROUTE_DS_MODEL = prev.ds;
+      if (prev.am === undefined) delete process.env.ANTHROPIC_MODEL;
+      else process.env.ANTHROPIC_MODEL = prev.am;
+      if (prev.jobs === undefined) delete process.env.CURSOR_ROUTE_JOBS_DIR;
+      else process.env.CURSOR_ROUTE_JOBS_DIR = prev.jobs;
+      rmSync(jobsDir, { recursive: true, force: true });
+    }
+  });
+
+  test("invalid ANTHROPIC_MODEL names the env vars, not --model", () => {
+    const prev = {
+      bin: process.env.CURSOR_ROUTE_CLAUDE_DS_BIN,
+      ds: process.env.CURSOR_ROUTE_DS_MODEL,
+      am: process.env.ANTHROPIC_MODEL,
+      jobs: process.env.CURSOR_ROUTE_JOBS_DIR,
+    };
+    const jobsDir = join(tmpdir(), `cr-jobs-env-bad-${process.pid}`);
+    mkdirSync(jobsDir, { recursive: true });
+    process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = "/tmp/fake-claude-ds";
+    delete process.env.CURSOR_ROUTE_DS_MODEL;
+    process.env.ANTHROPIC_MODEL = "deepseek-chat";
+    process.env.CURSOR_ROUTE_JOBS_DIR = jobsDir;
+    try {
+      const result = startJob({
+        prompt: "fix the unit test",
+        lane: "mid",
+        dryRun: true,
+      });
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error).toMatch(/ANTHROPIC_MODEL/);
+      expect(result.error).toMatch(/deepseek-chat/);
+      expect(result.error).not.toMatch(/Invalid --model/);
     } finally {
       if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
       else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev.bin;
@@ -841,7 +879,7 @@ describe("health", () => {
   test("returns structured report", () => {
     const r = runHealth();
     expect(r.product).toBe("cursor-route");
-    expect(r.version).toBe("0.1.12");
+    expect(r.version).toBe("0.1.13");
     expect(r.checks.length).toBeGreaterThan(3);
     expect(r.checks.some((c) => c.name === "tmux")).toBe(true);
     expect(r.checks.some((c) => c.name === "cursor_cli")).toBe(true);
@@ -853,8 +891,8 @@ describe("health", () => {
     expect(r.checks.some((c) => c.name === "worker:deepseek")).toBe(true);
   });
 
-  test("config version is 0.1.12", () => {
-    expect(config.version).toBe("0.1.12");
+  test("config version is 0.1.13", () => {
+    expect(config.version).toBe("0.1.13");
   });
 
   test("OR-gate: ok can be true while worker:opencode is false", () => {

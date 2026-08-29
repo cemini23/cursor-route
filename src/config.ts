@@ -31,7 +31,7 @@ export const DS_MODEL_IDS: Record<DsModelAlias, string> = {
 
 /** Prompt looks like a screenshot / image / ui mock — vision auto-pick. */
 const VISION_PROMPT_RE =
-  /screenshot|image|\.png|\.jpe?g|\.webp|ui mock|multimodal|\bvision\b/i;
+  /screenshot|\bimage\b|\.png|\.jpe?g|\.webp|ui mock|multimodal|\bvision\b/i;
 
 export function promptLooksLikeVision(prompt: string): boolean {
   return VISION_PROMPT_RE.test(prompt);
@@ -59,7 +59,7 @@ export function resolveDsModel(raw?: string | null): DsModelChoice {
   if (v === "deepseek-v4-pro[1m]") {
     return { alias: "pro", id: "deepseek-v4-pro[1m]" };
   }
-  throw new Error(`Invalid --model ${raw}; expected flash|pro|vision`);
+  throw new Error(`Invalid DeepSeek model ${raw}; expected flash|pro|vision`);
 }
 
 /** Alias-only helper (tests / callers that do not need the concrete id). */
@@ -111,7 +111,7 @@ function maxConcurrentJobsFromEnv(): number {
  */
 export const config = {
   product: "cursor-route",
-  version: "0.1.12",
+  version: "0.1.13",
   get jobsDir(): string {
     return defaultJobsDir();
   },

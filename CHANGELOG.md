@@ -4,6 +4,14 @@
 
 _(none)_
 
+## 0.1.13 — 2026-08-29
+
+- OpenRouter live-pick: do **not** cache the fetch-fail fallback (`openrouter/free`) — health no longer presents a stale fallback as `now openrouter/free`. Health says `cached <id>` only for a ranked catalog hit; otherwise `no catalog cache, fetch-fail fallback openrouter/free`.
+- Catalog fetch is an unauthenticated `GET /models` (no `Authorization` on curl argv).
+- Invalid `CURSOR_ROUTE_DS_MODEL` / `ANTHROPIC_MODEL` names those env vars instead of saying `Invalid --model`.
+- Vision auto-pick uses `\bimage\b` so "ImageMagick" stays Flash.
+- Hero demo fixture regenerated to **0.1.13**.
+
 ## 0.1.12 — 2026-08-29
 
 - **Flash-first:** `--model flash` is the cheap mid default even when Grok **usage** is out. `--model pro` is harder mid / **hard backup only**, not the default Grok-out stand-in. Grok **auth** (`grok login` / `XAI_API_KEY`) still ≠ usage-out.

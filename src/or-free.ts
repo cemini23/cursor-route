@@ -151,15 +151,16 @@ function writeCache(pick: OrFreePick): void {
 
 function httpGetSync(url: string, timeoutMs = 4000): string | null {
   const sec = Math.max(1, Math.ceil(timeoutMs / 1000));
-  const args = ["-fsS", "--max-time", String(sec), "-H", "Accept: application/json"];
-  const key = process.env.OPENROUTER_API_KEY?.trim();
-  if (key) args.push("-H", `Authorization: Bearer ${key}`);
-  args.push(url);
-  const curl = spawnSync("curl", args, {
-    encoding: "utf8",
-    timeout: timeoutMs + 500,
-    env: { ...process.env },
-  });
+  // Public GET /models — no Authorization header (key would land in `ps` argv).
+  const curl = spawnSync(
+    "curl",
+    ["-fsS", "--max-time", String(sec), "-H", "Accept: application/json", url],
+    {
+      encoding: "utf8",
+      timeout: timeoutMs + 500,
+      env: { ...process.env },
+    },
+  );
   if (curl.status === 0 && curl.stdout?.trim()) return curl.stdout;
   return null;
 }
@@ -210,17 +211,9 @@ export function pickOrFreeModel(opts?: { catalog?: OrModel[]; refresh?: boolean 
   const ranked = rankOrFreeModels(models);
   const winner = ranked[0];
   if (!winner) {
-    const fallback: OrFreePick = {
-      id: OPENROUTER_FALLBACK_MODEL,
-      name: "OpenRouter free router (fallback)",
-      context_length: 0,
-      boost: 0,
-      picked_at: new Date().toISOString(),
-      candidates: 0,
-      source: "fallback",
-    };
-    if (opts?.catalog === undefined) writeCache(fallback);
-    return fallback.id;
+    // Do not cache fallback — a 15-min stale fallback would masquerade as a
+    // live pick in health (`now openrouter/free`). Retry the catalog next call.
+    return OPENROUTER_FALLBACK_MODEL;
   }
   const pick: OrFreePick = {
     id: winner.id,

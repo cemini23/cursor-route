@@ -59,13 +59,17 @@ export const openRouterAdapter: Adapter = {
         detail: "openrouter-run not found — run bun run build (or use Bun from a source clone)",
       };
     }
-    // Health stays offline: cache hit, else the OpenRouter router fallback.
-    const pick = cachedOrFreePick() || OPENROUTER_FALLBACK_MODEL;
+    // Health stays offline: ranked cache hit, else label the router fallback
+    // (do not present openrouter/free as a fresh live pick).
+    const cached = cachedOrFreePick();
+    const detail = cached
+      ? `ok (live pick at start; cached ${cached} @ ${openRouterBaseUrl()})`
+      : `ok (live pick at start; no catalog cache, fetch-fail fallback ${OPENROUTER_FALLBACK_MODEL} @ ${openRouterBaseUrl()})`;
     return {
       worker: "openrouter",
       ok: true,
       binary: runner.command,
-      detail: `ok (live pick at start; now ${pick} @ ${openRouterBaseUrl()})`,
+      detail,
     };
   },
   buildLaunch({ promptFile, modelId }) {

@@ -116,10 +116,10 @@ docs/fixtures/generate-hero-demo.sh      # regenerate docs/fixtures/hero-demo.lo
 
 ```text
 $ cursor-route --version
-0.1.12
+0.1.13
 
 $ CURSOR_ROUTE_RELAXED=1 cursor-route health
-cursor-route v0.1.12
+cursor-route v0.1.13
 health: OK
 
 $ cursor-route start --lane mid --model flash --dry-run "Add a unit test for shellQuote"

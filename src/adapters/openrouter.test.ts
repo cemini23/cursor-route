@@ -43,6 +43,8 @@ describe("openrouter adapter", () => {
       const h = openRouterAdapter.health();
       expect(h.ok).toBe(true);
       expect(h.detail.toLowerCase()).toMatch(/live pick/);
+      expect(h.detail).toMatch(/fallback/);
+      expect(h.detail).not.toMatch(/now openrouter\/free/);
       expect(h.detail).not.toMatch(/defaults to openrouter\/free/);
     } finally {
       if (prev.model === undefined) delete process.env.CURSOR_ROUTE_OPENROUTER_MODEL;

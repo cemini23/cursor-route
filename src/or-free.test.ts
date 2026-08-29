@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -165,6 +165,16 @@ describe("openRouterModel live pick", () => {
       );
     });
   });
+
+  test("offline fallback is not written to cache", () => {
+    isolate(() => {
+      delete process.env.CURSOR_ROUTE_OR_REFRESH;
+      process.env.CURSOR_ROUTE_OR_OFFLINE = "1";
+      const cache = process.env.CURSOR_ROUTE_OR_CACHE_PATH!;
+      expect(openRouterModel()).toBe("openrouter/free");
+      expect(existsSync(cache)).toBe(false);
+    });
+  });
 });
 
 describe("openrouter health stays offline", () => {
@@ -189,6 +199,8 @@ describe("openrouter health stays offline", () => {
       const h = openRouterAdapter.health();
       expect(h.ok).toBe(true);
       expect(h.detail.toLowerCase()).toMatch(/live pick/);
+      expect(h.detail).toMatch(/fallback/);
+      expect(h.detail).not.toMatch(/now openrouter\/free/);
       expect(h.detail).not.toMatch(/qwen\//);
       expect(h.detail).not.toMatch(/defaults to openrouter\/free/);
     } finally {

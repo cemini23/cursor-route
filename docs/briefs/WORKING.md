@@ -1,7 +1,7 @@
 ---
 title: cursor-route workspace — working brief (edit in place)
 repo: ~/Projects/cursor-route
-npm: cursor-route@0.1.12 (not yet published — operator ships npm token later)
+npm: cursor-route@0.1.13 (publishing this slice)
 created: 2026-08-12
 updated: 2026-08-29
 ---
@@ -25,7 +25,7 @@ Cursor Agent plans. Workers run in tmux via `cursor-route`:
 
 Always-approve on for coding worktrees (`--ask` / `CURSOR_ROUTE_ASK=1` to opt out) — not LIVE Discord/trading. Jobs live in `~/.local/share/cursor-route/jobs`, not in this clone.
 
-Install: `npm i -g cursor-route` → **0.1.12** (after npm publish). Release notes: [CHANGELOG.md](../../CHANGELOG.md).
+Install: `npm i -g cursor-route` → **0.1.13**. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
 
 ## Open (edit / check off)
 
@@ -42,6 +42,7 @@ Install: `npm i -g cursor-route` → **0.1.12** (after npm publish). Release not
 - [x] **Opt-in `--worker opencode`** — 0.1.10: `opencode run --dir` + `--model`; always-approve → `--auto`; `--ask` omits it; never rewrites `~/.config/opencode/opencode.json`. Health ✓ needs `opencode` on PATH (`CURSOR_ROUTE_OPENCODE_BIN`). Mid stays **claude-ds**; easy stays OpenRouter chat. Free Zen may log/train — non-secret prompts.
 - [x] **Live Zen free pick** — 0.1.11: `--model free` ranks `GET https://opencode.ai/zen/v1/models` (Ox Alpha first while listed; ~15 min cache; Ox Alpha fallback if fetch fails). Pin with `CURSOR_ROUTE_OPENCODE_MODEL`. Health stays offline (cache/fallback only).
 - [x] **Flash-first + vision + live OpenRouter pick** — 0.1.12: `--model flash` stays the cheap Grok-out default; `--model vision` + screenshot auto-pick; easy lane live-picks free OpenRouter text models (`openrouter/free` is fetch-fail fallback only). Health never fetches `/models`. `route-orch` ProgRouter + MoRe one-liners. Hero fixture regenerated to 0.1.12. No npm publish in this slice.
+- [x] **Kimi 0.1.13 follow-up** — do not cache OpenRouter fallback; health labels uncached fallback; no Authorization on GET /models; env-invalid model error names the env vars; `\bimage\b` vision trigger.
 - [ ] **Hero GIF** — still outstanding; dry-run fixture ships as the substitute for now (`docs/fixtures/hero-demo.log` — see `docs/DEMO_GIF.md`)
 - [x] **Do not** paste private `ROUTE_KIT`, SIP, prod paths, or hang-watchdog env into this public repo
 
@@ -78,3 +79,4 @@ Install: `npm i -g cursor-route` → **0.1.12** (after npm publish). Release not
 | 2026-08-21 | Opt-in `--worker opencode` (Zen free `opencode/big-pickle`, `--auto`, no config rewrite); mid stays claude-ds → 0.1.10 LIVE. |
 | 2026-08-21 | Live Zen free pick (Ox Alpha first while listed; OpenRouter-style catalog rank) → 0.1.11 LIVE. |
 | 2026-08-29 | Flash-first docs, `--model vision` + auto-pick, live OpenRouter free pick, route-orch K318/K322, hero fixture 0.1.12. No npm publish. |
+| 2026-08-29 | Kimi audit follow-up → 0.1.13: no fallback cache, health labels, unauth GET /models, env error wording. |
