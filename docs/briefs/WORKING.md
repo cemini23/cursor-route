@@ -1,7 +1,7 @@
 ---
 title: cursor-route workspace — working brief (edit in place)
 repo: ~/Projects/cursor-route
-npm: cursor-route@0.1.13 (publishing this slice)
+npm: cursor-route@0.1.13 (LIVE on npm latest)
 created: 2026-08-12
 updated: 2026-08-29
 ---
@@ -79,4 +79,4 @@ Install: `npm i -g cursor-route` → **0.1.13**. Release notes: [CHANGELOG.md](.
 | 2026-08-21 | Opt-in `--worker opencode` (Zen free `opencode/big-pickle`, `--auto`, no config rewrite); mid stays claude-ds → 0.1.10 LIVE. |
 | 2026-08-21 | Live Zen free pick (Ox Alpha first while listed; OpenRouter-style catalog rank) → 0.1.11 LIVE. |
 | 2026-08-29 | Flash-first docs, `--model vision` + auto-pick, live OpenRouter free pick, route-orch K318/K322, hero fixture 0.1.12. No npm publish. |
-| 2026-08-29 | Kimi audit follow-up → 0.1.13: no fallback cache, health labels, unauth GET /models, env error wording. |
+| 2026-08-29 | Kimi audit follow-up → 0.1.13 LIVE on npm: no fallback cache, health labels, unauth GET /models, env error wording. |
