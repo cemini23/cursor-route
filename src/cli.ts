@@ -10,6 +10,7 @@ import {
   LANES,
   resolveDsModel,
   openCodeModel,
+  openRouterModel,
   type WorkerKind,
   type Lane,
   type DsModelAlias,
@@ -56,7 +57,7 @@ Usage:
 Start options:
   --worker <grok|claude-ds|openrouter|deepseek|opencode>  Worker adapter (default: grok; deepseek/opencode = opt-in)
   --lane <easy|mid|hard>                Lane → worker (easy=openrouter, mid=claude-ds, hard=grok)
-  --model <flash|pro|free|provider/model>  claude-ds/deepseek: flash|pro. opencode: free (live Zen catalog pick) or provider/model
+  --model <flash|pro|vision|free|provider/model>  claude-ds/deepseek: flash|pro|vision. opencode/openrouter: free (live catalog pick) or provider/model
   --dir <path>                          Working directory (default: cwd)
   --ask                                 Disable always-approve for this job
   --dry-run                             Print launch command; do not start
@@ -69,14 +70,14 @@ Env:
   CURSOR_ROUTE_MAX_JOBS              Max active jobs (default: 50)
   CURSOR_ROUTE_RELAXED=1             health OK without tmux/workers (CI / infra smoke)
   CURSOR_ROUTE_ALLOW_ANTHROPIC=1     Allow mid-lane on Anthropic Claude (expensive; not default; --model ignored)
-  CURSOR_ROUTE_DS_MODEL              Default mid model flash|pro (or deepseek-v4-pro[1m]); overridden by --model
+  CURSOR_ROUTE_DS_MODEL              Default mid model flash|pro|vision (or full ids / deepseek-v4-pro[1m]); overridden by --model
   CURSOR_ROUTE_GROK_BIN              Override the grok binary path (tests / power users)
   CURSOR_ROUTE_CLAUDE_DS_BIN         Override the claude-ds binary path (tests / power users)
   CURSOR_ROUTE_DSH_BIN               Override the dsh binary path (tests / power users)
   CURSOR_ROUTE_OPENCODE_BIN          Override the opencode binary path (tests / power users)
   DEEPSEEK_API_KEY                   DeepSeek API key (required for --worker deepseek)
   OPENROUTER_API_KEY                 OpenRouter key (required for --worker openrouter / --lane easy)
-  CURSOR_ROUTE_OPENROUTER_MODEL      OpenRouter model (default: openrouter/free)
+  CURSOR_ROUTE_OPENROUTER_MODEL      OpenRouter pin (unset or free = live catalog pick at start; fetch-fail fallback openrouter/free)
   OPENROUTER_BASE_URL                OpenRouter API base (default: https://openrouter.ai/api/v1)
   CURSOR_ROUTE_OPENCODE_MODEL        OpenCode model pin (unset or free = live Zen free pick); --model overrides
 `);
@@ -170,7 +171,7 @@ function asLane(v: unknown): Lane | undefined {
 
 function asDsModelChoice(v: unknown): { alias: DsModelAlias; id: string } | undefined {
   if (v === undefined || v === true) return undefined;
-  if (typeof v !== "string") throw new Error(`Invalid --model; expected flash|pro`);
+  if (typeof v !== "string") throw new Error(`Invalid --model; expected flash|pro|vision`);
   return resolveDsModel(v);
 }
 
@@ -180,6 +181,14 @@ function asOpenCodeModel(v: unknown): string | undefined {
     throw new Error(`Invalid --model; expected provider/model (e.g. opencode/x-preview-f-free) or free`);
   }
   return openCodeModel(v);
+}
+
+function asOpenRouterModel(v: unknown): string | undefined {
+  if (v === undefined || v === true) return undefined;
+  if (typeof v !== "string") {
+    throw new Error(`Invalid --model; expected provider/model or free (live OpenRouter catalog pick)`);
+  }
+  return openRouterModel(v);
 }
 
 function refuseSecrets(text: string, context: string): void {
@@ -264,8 +273,8 @@ async function main() {
 
     let model: DsModelAlias | undefined;
     let modelId: string | undefined;
-    // --model: DeepSeek flash|pro for claude-ds/deepseek; provider/model (or free) for opencode;
-    // ignore (do not validate) for grok/openrouter
+    // --model: DeepSeek flash|pro|vision for claude-ds/deepseek;
+    // provider/model (or free) for opencode/openrouter; ignore for grok
     if (f.model !== undefined && (resolvedWorker === "claude-ds" || resolvedWorker === "deepseek")) {
       try {
         const choice = asDsModelChoice(f.model);
@@ -280,6 +289,13 @@ async function main() {
     } else if (f.model !== undefined && resolvedWorker === "opencode") {
       try {
         modelId = asOpenCodeModel(f.model);
+      } catch (e) {
+        console.error((e as Error).message);
+        process.exit(2);
+      }
+    } else if (f.model !== undefined && resolvedWorker === "openrouter") {
+      try {
+        modelId = asOpenRouterModel(f.model);
       } catch (e) {
         console.error((e as Error).message);
         process.exit(2);

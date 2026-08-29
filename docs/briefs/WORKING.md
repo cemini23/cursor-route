@@ -1,9 +1,9 @@
 ---
 title: cursor-route workspace — working brief (edit in place)
 repo: ~/Projects/cursor-route
-npm: cursor-route@0.1.11 (LIVE on npm latest)
+npm: cursor-route@0.1.12 (not yet published — operator ships npm token later)
 created: 2026-08-12
-updated: 2026-08-21
+updated: 2026-08-29
 ---
 
 # cursor-route — living brief
@@ -18,21 +18,21 @@ Cursor Agent plans. Workers run in tmux via `cursor-route`:
 
 | Lane | Worker | Intent |
 |------|--------|--------|
-| `easy` | OpenRouter free | Wording / drafts — non-secret prompts only |
-| `mid` | claude-ds (DeepSeek behind Claude Code) | Default implement (**Flash**; `--model pro` when needed) |
+| `easy` | OpenRouter free (live pick) | Wording / drafts — non-secret prompts only |
+| `mid` | claude-ds (DeepSeek behind Claude Code) | Default implement (**Flash**; `--model vision` for screenshots; `--model pro` harder mid / hard backup only) |
 | `hard` | Grok CLI | Hard implement |
 | opt-in | OpenCode | `--worker opencode` coding agent; `--model free` ranks live Zen catalog (Ox Alpha first while listed) |
 
 Always-approve on for coding worktrees (`--ask` / `CURSOR_ROUTE_ASK=1` to opt out) — not LIVE Discord/trading. Jobs live in `~/.local/share/cursor-route/jobs`, not in this clone.
 
-Install: `npm i -g cursor-route` → **0.1.11**. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
+Install: `npm i -g cursor-route` → **0.1.12** (after npm publish). Release notes: [CHANGELOG.md](../../CHANGELOG.md).
 
 ## Open (edit / check off)
 
 - [x] **Flash vs Pro on the CLI** — public default **Flash**; `--model pro` → `deepseek-v4-pro` (LIVE 0.1.6+)
   - [x] pass `claude-ds -Model deepseek-v4-flash|deepseek-v4-pro` from the adapter
   - [x] add `--model flash|pro` on `start`
-  - [x] document Grok **auth** ≠ usage-out (`grok login`) vs quota → Pro stand-in
+  - [x] document Grok **auth** ≠ usage-out (`grok login`); Flash-first when Grok **usage** is out; Pro = harder mid / hard backup only (0.1.12)
 - [x] **Skill `route-orch`** — Flash/Pro table in `skills/` + `.cursor/skills/`
 - [x] **Official DeepSeek Harness** — `deepseek` adapter slot present; `@deepseek-ai/dsh` 0.1.0-rc.6 (2026-08-13, github.com/deepseek-ai/deepseek-harness, MIT) is a developer-preview plugin kernel (web UI + `dsh --profile headless "job"`), not a Claude Code replacement; mid does not swap
 - [x] **0.1.7 debug fixes** — env default wired through `startJob`; Anthropic hatch omits DS ids; preserve `[1m]`
@@ -41,6 +41,7 @@ Install: `npm i -g cursor-route` → **0.1.11**. Release notes: [CHANGELOG.md](.
 - [x] **Health proves mid DeepSeek + evidence tree** — 0.1.9: `lane:mid` ✓ only when DeepSeek is proven (shim or DeepSeek `ANTHROPIC_BASE_URL`; Anthropic hatch is not proof); health JSON `lanes.mid`; `status --json` evidence tree (`spawn` / `execute` / `verify.claim=unverified`); skill health-before-mid + evidence-tree closeout. Mid stays **claude-ds**.
 - [x] **Opt-in `--worker opencode`** — 0.1.10: `opencode run --dir` + `--model`; always-approve → `--auto`; `--ask` omits it; never rewrites `~/.config/opencode/opencode.json`. Health ✓ needs `opencode` on PATH (`CURSOR_ROUTE_OPENCODE_BIN`). Mid stays **claude-ds**; easy stays OpenRouter chat. Free Zen may log/train — non-secret prompts.
 - [x] **Live Zen free pick** — 0.1.11: `--model free` ranks `GET https://opencode.ai/zen/v1/models` (Ox Alpha first while listed; ~15 min cache; Ox Alpha fallback if fetch fails). Pin with `CURSOR_ROUTE_OPENCODE_MODEL`. Health stays offline (cache/fallback only).
+- [x] **Flash-first + vision + live OpenRouter pick** — 0.1.12: `--model flash` stays the cheap Grok-out default; `--model vision` + screenshot auto-pick; easy lane live-picks free OpenRouter text models (`openrouter/free` is fetch-fail fallback only). Health never fetches `/models`. `route-orch` ProgRouter + MoRe one-liners. Hero fixture regenerated to 0.1.12. No npm publish in this slice.
 - [ ] **Hero GIF** — still outstanding; dry-run fixture ships as the substitute for now (`docs/fixtures/hero-demo.log` — see `docs/DEMO_GIF.md`)
 - [x] **Do not** paste private `ROUTE_KIT`, SIP, prod paths, or hang-watchdog env into this public repo
 
@@ -55,6 +56,7 @@ Install: `npm i -g cursor-route` → **0.1.11**. Release notes: [CHANGELOG.md](.
 | `src/adapters/openrouter.ts` | Easy worker |
 | `src/adapters/opencode.ts` | Opt-in OpenCode worker (`--worker opencode`; mid stays claude-ds) |
 | `src/zen-free.ts` | Live Zen catalog rank for `--model free` |
+| `src/or-free.ts` | Live OpenRouter catalog rank for easy-lane `--model free` |
 | `skills/route-orch/SKILL.md` | Cursor skill — spawn CLI, do not implement in-session |
 | `CHANGELOG.md` | Release notes |
 | `SECURITY.md` | Secret refuse gate |
@@ -75,3 +77,4 @@ Install: `npm i -g cursor-route` → **0.1.11**. Release notes: [CHANGELOG.md](.
 | 2026-08-18 | Health `lane:mid` + `lanes.mid` prove DeepSeek; status evidence tree (`verify.claim` stays unverified); skill health-before-mid + closeout tree; mid stays claude-ds → 0.1.9 LIVE. |
 | 2026-08-21 | Opt-in `--worker opencode` (Zen free `opencode/big-pickle`, `--auto`, no config rewrite); mid stays claude-ds → 0.1.10 LIVE. |
 | 2026-08-21 | Live Zen free pick (Ox Alpha first while listed; OpenRouter-style catalog rank) → 0.1.11 LIVE. |
+| 2026-08-29 | Flash-first docs, `--model vision` + auto-pick, live OpenRouter free pick, route-orch K318/K322, hero fixture 0.1.12. No npm publish. |

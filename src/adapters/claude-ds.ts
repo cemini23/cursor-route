@@ -212,7 +212,7 @@ export const claudeDsAdapter: Adapter = {
       resolved.mode.startsWith("claude-ds") || resolved.mode.startsWith("deepseek-claude");
 
     // Anthropic escape hatch: do not pass DeepSeek model ids (unknown to Anthropic).
-    // --model flash|pro is DeepSeek-only; stock Claude uses its own defaults / ANTHROPIC_MODEL.
+    // --model flash|pro|vision is DeepSeek-only; stock Claude uses its own defaults / ANTHROPIC_MODEL.
     if (isAnthropicEscape) {
       const parts = [
         shellQuote(resolved.binary),

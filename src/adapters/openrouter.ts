@@ -3,7 +3,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import type { Adapter, WorkerHealth } from "./types.ts";
 import { shellQuote } from "../util.ts";
-import { openRouterModel, openRouterBaseUrl } from "../config.ts";
+import {
+  cachedOrFreePick,
+  OPENROUTER_FALLBACK_MODEL,
+  openRouterBaseUrl,
+} from "../config.ts";
 
 /**
  * Resolve how to invoke the one-shot runner. Prefer the compiled dist via node
@@ -22,11 +26,11 @@ function resolveRunner(): { command: string } | null {
   return null;
 }
 
-function openRouterEnv(): Record<string, string> | undefined {
+function openRouterEnv(modelId?: string): Record<string, string> | undefined {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return undefined;
   const env: Record<string, string> = { OPENROUTER_API_KEY: key };
-  const model = process.env.CURSOR_ROUTE_OPENROUTER_MODEL;
+  const model = modelId || process.env.CURSOR_ROUTE_OPENROUTER_MODEL;
   if (model) env.CURSOR_ROUTE_OPENROUTER_MODEL = model;
   const base = process.env.OPENROUTER_BASE_URL;
   if (base) env.OPENROUTER_BASE_URL = base;
@@ -44,7 +48,7 @@ export const openRouterAdapter: Adapter = {
         ok: false,
         binary: runner?.command ?? null,
         detail:
-          "OPENROUTER_API_KEY not set — export your OpenRouter key (easy lane model defaults to openrouter/free)",
+          "OPENROUTER_API_KEY not set — export your OpenRouter key (easy lane live-picks a free model at start; pin with CURSOR_ROUTE_OPENROUTER_MODEL)",
       };
     }
     if (!runner) {
@@ -55,19 +59,21 @@ export const openRouterAdapter: Adapter = {
         detail: "openrouter-run not found — run bun run build (or use Bun from a source clone)",
       };
     }
+    // Health stays offline: cache hit, else the OpenRouter router fallback.
+    const pick = cachedOrFreePick() || OPENROUTER_FALLBACK_MODEL;
     return {
       worker: "openrouter",
       ok: true,
       binary: runner.command,
-      detail: `ok (model ${openRouterModel()} @ ${openRouterBaseUrl()})`,
+      detail: `ok (live pick at start; now ${pick} @ ${openRouterBaseUrl()})`,
     };
   },
-  buildLaunch({ promptFile }) {
+  buildLaunch({ promptFile, modelId }) {
     const runner = resolveRunner();
     if (!runner) throw new Error("openrouter runner not available — run: bun run build");
     // Missing key is tolerated here so `--dry-run` can still print the command;
     // real starts are gated by the health preflight (which requires the key).
-    const env = openRouterEnv();
+    const env = openRouterEnv(modelId);
 
     // No interactive approval concept for a pure HTTP call — nothing to auto-approve.
     return {

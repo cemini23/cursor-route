@@ -2,7 +2,7 @@
 
 > Cursor stays the planner. DeepSeek (mid), Grok CLI (hard), and OpenRouter free models (easy) run parallel coding workers in tmux. `--worker opencode` is an opt-in coding agent on OpenCode Zen free models.
 
-MIT CLI + Cursor skill. npm: https://www.npmjs.com/package/cursor-route (latest **0.1.11**)
+MIT CLI + Cursor skill. npm: https://www.npmjs.com/package/cursor-route (latest **0.1.12**)
 GitHub: https://github.com/cemini23/cursor-route
 
 ## FAQ
@@ -14,13 +14,15 @@ cursor-route is a public MIT CLI and Cursor skill that runs parallel coding work
 It uses the familiar strategist and worker-pane shape, but it is not a Codex clone. cursor-route uses Cursor as the planner and DeepSeek plus Grok CLI as workers. Codex is not required.
 
 ### Does mid lane use Anthropic Claude?
-No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` and a DeepSeek key in `ANTHROPIC_AUTH_TOKEN`. Default model is Flash (`--model flash`); use `--model pro` for harder mid work or when Grok usage is exhausted (not the same as a missing `grok login`).
+No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` and a DeepSeek key in `ANTHROPIC_AUTH_TOKEN`. Default model is Flash (`--model flash`) — keep Flash when Grok **usage** is out. `--model vision` is for screenshots / ui mocks. `--model pro` is harder mid / **hard backup only**, not the default Grok-out stand-in. A missing `grok login` is auth, not the Pro case.
 
 ### Flash vs Pro?
 | Flag | Model | When |
 |------|-------|------|
-| `--model flash` (default) | `deepseek-v4-flash` | Cheap mid execute |
-| `--model pro` | `deepseek-v4-pro` | Harder mid / Grok usage stand-in |
+| `--model flash` (default) | `deepseek-v4-flash` | Cheap mid execute. Prefer this when Grok **usage** is out |
+| `--model vision` | `deepseek-v4-flash-vision-exp` | Screenshots / ui mocks / image prompts (or auto-pick) |
+| `--model pro` | `deepseek-v4-pro` | Harder mid / **hard backup** only — not the default Grok-out stand-in |
+| `--model deepseek-v4-pro[1m]` | preserved SKU | Large-context Pro |
 
 ### How do I use OpenCode free models?
 Install OpenCode (`npm i -g opencode-ai`), run `opencode auth login`, then `cursor-route start --worker opencode "…"`. `--model free` ranks live Zen free models (Ox Alpha first while listed). Mid stays `claude-ds`.
@@ -29,12 +31,12 @@ Install OpenCode (`npm i -g opencode-ai`), run `opencode auth login`, then `curs
 Run `npm i -g cursor-route`, install tmux if needed, then run `cursor-route health`. Copy the Cursor skill from `$(npm root -g)/cursor-route/skills/route-orch`. Source: https://github.com/cemini23/cursor-route
 
 ### Is it free?
-The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you. The easy lane can be free on OpenRouter's free-model route (`openrouter/free`). `--worker opencode` can use OpenCode Zen free models.
+The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you. The easy lane live-picks a free OpenRouter text model at start (fallback router `openrouter/free` only if the catalog fetch fails). `--worker opencode` can use OpenCode Zen free models.
 
 ## Install
 
 - npm: `npm i -g cursor-route`
 - Health: `cursor-route health`
-- Mid: `cursor-route start --lane mid "…"` (Flash) · `--model pro` when needed
+- Mid: `cursor-route start --lane mid "…"` (Flash; keep Flash when Grok usage is out) · `--model vision` for screenshots · `--model pro` harder mid / hard backup only
 - OpenCode (opt-in): `cursor-route start --worker opencode "…"`
 - Skill: `/route-orch` (Cursor)

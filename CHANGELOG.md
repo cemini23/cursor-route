@@ -4,6 +4,15 @@
 
 _(none)_
 
+## 0.1.12 — 2026-08-29
+
+- **Flash-first:** `--model flash` is the cheap mid default even when Grok **usage** is out. `--model pro` is harder mid / **hard backup only**, not the default Grok-out stand-in. Grok **auth** (`grok login` / `XAI_API_KEY`) still ≠ usage-out.
+- `--model vision` (and `deepseek-v4-flash-vision-exp`) on `claude-ds` / `--worker deepseek`. Mid default stays Flash. If `--model` and `CURSOR_ROUTE_DS_MODEL` / `ANTHROPIC_MODEL` are unset, screenshot/image/png/jpg/jpeg/webp/ui mock/multimodal/vision prompts auto-pick vision Flash. Explicit `--model flash|pro|vision` always wins.
+- Easy lane **live OpenRouter free pick** at request time (`GET /models`, rank `:free` or $0 text models, cache ~15 min). Do not hardcode a third-party model id as the default. Pin with `CURSOR_ROUTE_OPENROUTER_MODEL` or `--model provider/model`. Empty / `free` = live pick. Fetch-fail / empty catalog falls back to the OpenRouter **router** `openrouter/free` (fallback only). Health never fetches (cache or fallback only). Tests: `CURSOR_ROUTE_OR_OFFLINE=1` or `CURSOR_ROUTE_OR_CATALOG_JSON`.
+- `route-orch`: ProgRouter (step-wise re-route) + MoRe (do not auto-spawn N panes for multi-perspective). Flash-first table + live OpenRouter wording.
+- Hero demo fixture regenerated (`docs/fixtures/generate-hero-demo.sh`) so `--version` / health banner are 0.1.12.
+- Headless `kill`: if SIGKILL was sent, succeed even when sandboxed `ps` (EPERM) treats unreaped zombies as alive. `refreshStatus` still fail-safes to alive.
+
 ## 0.1.11 — 2026-08-21
 
 - `--worker opencode --model free` now **ranks the live OpenCode Zen catalog** (`GET https://opencode.ai/zen/v1/models`, cached ~15 min) instead of hardcoding `opencode/big-pickle`. Ox Alpha (`opencode/x-preview-f-free`) wins while it is listed and free; coding `-free` models next; `big-pickle` last among non-contributor free. Fetch-fail fallback is Ox Alpha.

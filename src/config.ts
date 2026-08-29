@@ -11,7 +11,7 @@ export type WorkerKind = "grok" | "claude-ds" | "openrouter" | "deepseek" | "ope
 export type Lane = "easy" | "mid" | "hard";
 
 /** Public CLI aliases for mid-lane DeepSeek models. */
-export type DsModelAlias = "flash" | "pro";
+export type DsModelAlias = "flash" | "pro" | "vision";
 
 export interface DsModelChoice {
   alias: DsModelAlias;
@@ -21,12 +21,21 @@ export interface DsModelChoice {
 
 export const WORKERS: WorkerKind[] = ["grok", "claude-ds", "openrouter", "deepseek", "opencode"];
 export const LANES: Lane[] = ["easy", "mid", "hard"];
-export const DS_MODELS: DsModelAlias[] = ["flash", "pro"];
+export const DS_MODELS: DsModelAlias[] = ["flash", "pro", "vision"];
 
 export const DS_MODEL_IDS: Record<DsModelAlias, string> = {
   flash: "deepseek-v4-flash",
   pro: "deepseek-v4-pro",
+  vision: "deepseek-v4-flash-vision-exp",
 };
+
+/** Prompt looks like a screenshot / image / ui mock — vision auto-pick. */
+const VISION_PROMPT_RE =
+  /screenshot|image|\.png|\.jpe?g|\.webp|ui mock|multimodal|\bvision\b/i;
+
+export function promptLooksLikeVision(prompt: string): boolean {
+  return VISION_PROMPT_RE.test(prompt);
+}
 
 /**
  * Resolve --model / env to alias + concrete model id.
@@ -44,10 +53,13 @@ export function resolveDsModel(raw?: string | null): DsModelChoice {
   if (v === "pro" || v === "deepseek-v4-pro") {
     return { alias: "pro", id: DS_MODEL_IDS.pro };
   }
+  if (v === "vision" || v === "deepseek-v4-flash-vision-exp") {
+    return { alias: "vision", id: DS_MODEL_IDS.vision };
+  }
   if (v === "deepseek-v4-pro[1m]") {
     return { alias: "pro", id: "deepseek-v4-pro[1m]" };
   }
-  throw new Error(`Invalid --model ${raw}; expected flash|pro`);
+  throw new Error(`Invalid --model ${raw}; expected flash|pro|vision`);
 }
 
 /** Alias-only helper (tests / callers that do not need the concrete id). */
@@ -64,11 +76,6 @@ export function defaultDsModelFromEnv(): DsModelChoice {
   return resolveDsModel(raw);
 }
 
-/** OpenRouter model for the easy lane (env CURSOR_ROUTE_OPENROUTER_MODEL). */
-export function openRouterModel(): string {
-  return process.env.CURSOR_ROUTE_OPENROUTER_MODEL || "openrouter/free";
-}
-
 /** OpenRouter API base URL (env OPENROUTER_BASE_URL). */
 export function openRouterBaseUrl(): string {
   return process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
@@ -80,6 +87,13 @@ export {
   openCodeModel,
   cachedZenFreePick,
 } from "./zen-free.ts";
+
+export {
+  OPENROUTER_FALLBACK_MODEL,
+  assertOpenRouterModel,
+  cachedOrFreePick,
+  openRouterModel,
+} from "./or-free.ts";
 
 function maxConcurrentJobsFromEnv(): number {
   const raw = process.env.CURSOR_ROUTE_MAX_JOBS;
@@ -97,7 +111,7 @@ function maxConcurrentJobsFromEnv(): number {
  */
 export const config = {
   product: "cursor-route",
-  version: "0.1.11",
+  version: "0.1.12",
   get jobsDir(): string {
     return defaultJobsDir();
   },

@@ -11,7 +11,7 @@ import {
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { resolveWorker, startJob, jobEvidence, type Job } from "./jobs.ts";
-import { config, resolveDsModel, resolveDsModelAlias } from "./config.ts";
+import { config, promptLooksLikeVision, resolveDsModel, resolveDsModelAlias } from "./config.ts";
 import { shellQuote, newJobId } from "./util.ts";
 import { runHealth } from "./health.ts";
 import { looksLikeSecretMaterial, redactSecrets } from "./secrets.ts";
@@ -58,13 +58,36 @@ describe("resolveDsModel", () => {
   test("accepts aliases and full ids", () => {
     expect(resolveDsModel("flash").id).toBe("deepseek-v4-flash");
     expect(resolveDsModel("pro").id).toBe("deepseek-v4-pro");
+    expect(resolveDsModel("vision").id).toBe("deepseek-v4-flash-vision-exp");
+    expect(resolveDsModel("deepseek-v4-flash-vision-exp")).toEqual({
+      alias: "vision",
+      id: "deepseek-v4-flash-vision-exp",
+    });
     expect(resolveDsModel("deepseek-v4-pro[1m]")).toEqual({
       alias: "pro",
       id: "deepseek-v4-pro[1m]",
     });
   });
   test("rejects unknown", () => {
-    expect(() => resolveDsModel("opus")).toThrow(/flash\|pro/);
+    expect(() => resolveDsModel("opus")).toThrow(/flash\|pro\|vision/);
+  });
+});
+
+describe("promptLooksLikeVision", () => {
+  test("matches screenshot/image/png/jpg/jpeg/webp/ui mock/multimodal/vision", () => {
+    expect(promptLooksLikeVision("describe this screenshot")).toBe(true);
+    expect(promptLooksLikeVision("Look at this screenshot.png and describe it")).toBe(true);
+    expect(promptLooksLikeVision("review photo.jpg")).toBe(true);
+    expect(promptLooksLikeVision("open mock.jpeg")).toBe(true);
+    expect(promptLooksLikeVision("asset.webp")).toBe(true);
+    expect(promptLooksLikeVision("ui mock of the settings page")).toBe(true);
+    expect(promptLooksLikeVision("multimodal caption")).toBe(true);
+    expect(promptLooksLikeVision("use vision for this")).toBe(true);
+    expect(promptLooksLikeVision("describe the image")).toBe(true);
+  });
+  test("plain coding prompts stay false", () => {
+    expect(promptLooksLikeVision("fix the unit test")).toBe(false);
+    expect(promptLooksLikeVision("Add a unit test for shellQuote")).toBe(false);
   });
 });
 
@@ -91,6 +114,23 @@ describe("claude-ds -Model", () => {
       else process.env.CURSOR_ROUTE_DS_MODEL = prevDs;
       if (prevAm === undefined) delete process.env.ANTHROPIC_MODEL;
       else process.env.ANTHROPIC_MODEL = prevAm;
+    }
+  });
+  test("vision alias maps to deepseek-v4-flash-vision-exp", () => {
+    const prev = process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+    process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = "/tmp/fake-claude-ds";
+    try {
+      const plan = claudeDsAdapter.buildLaunch({
+        promptFile: "/tmp/p.prompt",
+        cwd: "/tmp",
+        alwaysApprove: true,
+        model: "vision",
+      });
+      expect(plan.command).toContain("deepseek-v4-flash-vision-exp");
+      expect(plan.command).not.toContain("deepseek-v4-flash'");
+    } finally {
+      if (prev === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+      else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev;
     }
   });
   test("pro alias maps to deepseek-v4-pro", () => {
@@ -202,6 +242,164 @@ describe("startJob product path", () => {
       else process.env.ANTHROPIC_MODEL = prev.am;
       if (prev.jobs === undefined) delete process.env.CURSOR_ROUTE_JOBS_DIR;
       else process.env.CURSOR_ROUTE_JOBS_DIR = prev.jobs;
+      rmSync(jobsDir, { recursive: true, force: true });
+    }
+  });
+
+  test("screenshot.png auto-picks vision when --model and env unset", () => {
+    const prev = {
+      bin: process.env.CURSOR_ROUTE_CLAUDE_DS_BIN,
+      ds: process.env.CURSOR_ROUTE_DS_MODEL,
+      am: process.env.ANTHROPIC_MODEL,
+      jobs: process.env.CURSOR_ROUTE_JOBS_DIR,
+    };
+    const jobsDir = join(tmpdir(), `cr-jobs-vision-${process.pid}`);
+    mkdirSync(jobsDir, { recursive: true });
+    process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = "/tmp/fake-claude-ds";
+    delete process.env.CURSOR_ROUTE_DS_MODEL;
+    delete process.env.ANTHROPIC_MODEL;
+    process.env.CURSOR_ROUTE_JOBS_DIR = jobsDir;
+    try {
+      const result = startJob({
+        prompt: "describe screenshot.png",
+        lane: "mid",
+        dryRun: true,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.job.model).toBe("vision");
+      expect(result.command).toContain("deepseek-v4-flash-vision-exp");
+    } finally {
+      if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+      else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev.bin;
+      if (prev.ds === undefined) delete process.env.CURSOR_ROUTE_DS_MODEL;
+      else process.env.CURSOR_ROUTE_DS_MODEL = prev.ds;
+      if (prev.am === undefined) delete process.env.ANTHROPIC_MODEL;
+      else process.env.ANTHROPIC_MODEL = prev.am;
+      if (prev.jobs === undefined) delete process.env.CURSOR_ROUTE_JOBS_DIR;
+      else process.env.CURSOR_ROUTE_JOBS_DIR = prev.jobs;
+      rmSync(jobsDir, { recursive: true, force: true });
+    }
+  });
+
+  test("plain prompt stays flash when env unset", () => {
+    const prev = {
+      bin: process.env.CURSOR_ROUTE_CLAUDE_DS_BIN,
+      ds: process.env.CURSOR_ROUTE_DS_MODEL,
+      am: process.env.ANTHROPIC_MODEL,
+      jobs: process.env.CURSOR_ROUTE_JOBS_DIR,
+    };
+    const jobsDir = join(tmpdir(), `cr-jobs-flash-${process.pid}`);
+    mkdirSync(jobsDir, { recursive: true });
+    process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = "/tmp/fake-claude-ds";
+    delete process.env.CURSOR_ROUTE_DS_MODEL;
+    delete process.env.ANTHROPIC_MODEL;
+    process.env.CURSOR_ROUTE_JOBS_DIR = jobsDir;
+    try {
+      const result = startJob({
+        prompt: "fix the unit test",
+        lane: "mid",
+        dryRun: true,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.job.model).toBe("flash");
+      expect(result.command).toContain("deepseek-v4-flash");
+      expect(result.command).not.toContain("deepseek-v4-flash-vision-exp");
+    } finally {
+      if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+      else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev.bin;
+      if (prev.ds === undefined) delete process.env.CURSOR_ROUTE_DS_MODEL;
+      else process.env.CURSOR_ROUTE_DS_MODEL = prev.ds;
+      if (prev.am === undefined) delete process.env.ANTHROPIC_MODEL;
+      else process.env.ANTHROPIC_MODEL = prev.am;
+      if (prev.jobs === undefined) delete process.env.CURSOR_ROUTE_JOBS_DIR;
+      else process.env.CURSOR_ROUTE_JOBS_DIR = prev.jobs;
+      rmSync(jobsDir, { recursive: true, force: true });
+    }
+  });
+
+  test("explicit --model flash wins over a vision-looking prompt", () => {
+    const prev = {
+      bin: process.env.CURSOR_ROUTE_CLAUDE_DS_BIN,
+      ds: process.env.CURSOR_ROUTE_DS_MODEL,
+      am: process.env.ANTHROPIC_MODEL,
+      jobs: process.env.CURSOR_ROUTE_JOBS_DIR,
+    };
+    const jobsDir = join(tmpdir(), `cr-jobs-flashwin-${process.pid}`);
+    mkdirSync(jobsDir, { recursive: true });
+    process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = "/tmp/fake-claude-ds";
+    delete process.env.CURSOR_ROUTE_DS_MODEL;
+    delete process.env.ANTHROPIC_MODEL;
+    process.env.CURSOR_ROUTE_JOBS_DIR = jobsDir;
+    try {
+      const result = startJob({
+        prompt: "Look at this screenshot.png and describe it",
+        lane: "mid",
+        model: "flash",
+        dryRun: true,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.job.model).toBe("flash");
+      expect(result.command).not.toContain("deepseek-v4-flash-vision-exp");
+    } finally {
+      if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+      else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev.bin;
+      if (prev.ds === undefined) delete process.env.CURSOR_ROUTE_DS_MODEL;
+      else process.env.CURSOR_ROUTE_DS_MODEL = prev.ds;
+      if (prev.am === undefined) delete process.env.ANTHROPIC_MODEL;
+      else process.env.ANTHROPIC_MODEL = prev.am;
+      if (prev.jobs === undefined) delete process.env.CURSOR_ROUTE_JOBS_DIR;
+      else process.env.CURSOR_ROUTE_JOBS_DIR = prev.jobs;
+      rmSync(jobsDir, { recursive: true, force: true });
+    }
+  });
+
+  test("easy lane dry-run offline records the OpenRouter fallback id", () => {
+    const prev = {
+      jobs: process.env.CURSOR_ROUTE_JOBS_DIR,
+      model: process.env.CURSOR_ROUTE_OPENROUTER_MODEL,
+      offline: process.env.CURSOR_ROUTE_OR_OFFLINE,
+      json: process.env.CURSOR_ROUTE_OR_CATALOG_JSON,
+      cache: process.env.CURSOR_ROUTE_OR_CACHE_PATH,
+      refresh: process.env.CURSOR_ROUTE_OR_REFRESH,
+      key: process.env.OPENROUTER_API_KEY,
+    };
+    const jobsDir = join(tmpdir(), `cr-jobs-or-${process.pid}`);
+    mkdirSync(jobsDir, { recursive: true });
+    process.env.CURSOR_ROUTE_JOBS_DIR = jobsDir;
+    delete process.env.CURSOR_ROUTE_OPENROUTER_MODEL;
+    process.env.CURSOR_ROUTE_OR_OFFLINE = "1";
+    delete process.env.CURSOR_ROUTE_OR_CATALOG_JSON;
+    process.env.CURSOR_ROUTE_OR_CACHE_PATH = join(jobsDir, "or-cache.json");
+    process.env.CURSOR_ROUTE_OR_REFRESH = "1";
+    delete process.env.OPENROUTER_API_KEY;
+    try {
+      const result = startJob({
+        prompt: "Rewrite this FAQ",
+        lane: "easy",
+        dryRun: true,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.job.worker).toBe("openrouter");
+      expect(result.job.model).toBe("openrouter/free");
+    } finally {
+      if (prev.jobs === undefined) delete process.env.CURSOR_ROUTE_JOBS_DIR;
+      else process.env.CURSOR_ROUTE_JOBS_DIR = prev.jobs;
+      if (prev.model === undefined) delete process.env.CURSOR_ROUTE_OPENROUTER_MODEL;
+      else process.env.CURSOR_ROUTE_OPENROUTER_MODEL = prev.model;
+      if (prev.offline === undefined) delete process.env.CURSOR_ROUTE_OR_OFFLINE;
+      else process.env.CURSOR_ROUTE_OR_OFFLINE = prev.offline;
+      if (prev.json === undefined) delete process.env.CURSOR_ROUTE_OR_CATALOG_JSON;
+      else process.env.CURSOR_ROUTE_OR_CATALOG_JSON = prev.json;
+      if (prev.cache === undefined) delete process.env.CURSOR_ROUTE_OR_CACHE_PATH;
+      else process.env.CURSOR_ROUTE_OR_CACHE_PATH = prev.cache;
+      if (prev.refresh === undefined) delete process.env.CURSOR_ROUTE_OR_REFRESH;
+      else process.env.CURSOR_ROUTE_OR_REFRESH = prev.refresh;
+      if (prev.key === undefined) delete process.env.OPENROUTER_API_KEY;
+      else process.env.OPENROUTER_API_KEY = prev.key;
       rmSync(jobsDir, { recursive: true, force: true });
     }
   });
@@ -372,6 +570,31 @@ describe("deepseek adapter (dsh)", () => {
         expect(patch).toContain("deepseek-v4-flash");
         expect(patch).not.toContain("deepseek-v4-pro");
         expect(patch).not.toContain("test-key");
+      },
+    );
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("buildLaunch: vision model → deepseek-v4-flash-vision-exp in patch", () => {
+    const { dir, bin } = makeFakeDsh("vision");
+    const promptFile = join(dir, "job.prompt");
+    writeFileSync(promptFile, "ping");
+    withEnv(
+      {
+        CURSOR_ROUTE_DSH_BIN: bin,
+        DEEPSEEK_API_KEY: "test-key",
+        CURSOR_ROUTE_DS_MODEL: undefined,
+        ANTHROPIC_MODEL: undefined,
+      },
+      () => {
+        deepseekAdapter.buildLaunch({
+          promptFile,
+          cwd: dir,
+          alwaysApprove: true,
+          model: "vision",
+        });
+        const patch = readFileSync(join(dir, "job.dsh-patch.yml"), "utf8");
+        expect(patch).toContain("deepseek-v4-flash-vision-exp");
       },
     );
     rmSync(dir, { recursive: true, force: true });
@@ -618,7 +841,7 @@ describe("health", () => {
   test("returns structured report", () => {
     const r = runHealth();
     expect(r.product).toBe("cursor-route");
-    expect(r.version).toBe("0.1.11");
+    expect(r.version).toBe("0.1.12");
     expect(r.checks.length).toBeGreaterThan(3);
     expect(r.checks.some((c) => c.name === "tmux")).toBe(true);
     expect(r.checks.some((c) => c.name === "cursor_cli")).toBe(true);
@@ -630,8 +853,8 @@ describe("health", () => {
     expect(r.checks.some((c) => c.name === "worker:deepseek")).toBe(true);
   });
 
-  test("config version is 0.1.11", () => {
-    expect(config.version).toBe("0.1.11");
+  test("config version is 0.1.12", () => {
+    expect(config.version).toBe("0.1.12");
   });
 
   test("OR-gate: ok can be true while worker:opencode is false", () => {

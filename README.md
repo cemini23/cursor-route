@@ -27,8 +27,8 @@ If you already live in Cursor, X Premium (Grok CLI), and DeepSeek — stop payin
 |------|----------------|------------------|
 | Cursor | Premium plan | Plan / synthesize / verify (orchestrator) |
 | Grok CLI | X Premium | `--lane hard` implement |
-| DeepSeek via claude-ds | DeepSeek API / plan | `--lane mid` implement (**Flash** default; `--model pro` when needed) |
-| OpenRouter free models | OpenRouter API (free tier) | `--lane easy` wording/drafts — non-secret prompts only (see Security) |
+| DeepSeek via claude-ds | DeepSeek API / plan | `--lane mid` implement (**Flash** default; `--model vision` for screenshots; `--model pro` harder mid / hard backup only) |
+| OpenRouter free models | OpenRouter API (free tier) | `--lane easy` live free pick at start — non-secret prompts only (see Security) |
 | OpenCode (opt-in) | OpenCode Zen free models | `--worker opencode` implement on live Zen free pick (Ox Alpha while listed) |
 | Codex / extra Claude | Optional | Not required for v0 |
 
@@ -116,10 +116,10 @@ docs/fixtures/generate-hero-demo.sh      # regenerate docs/fixtures/hero-demo.lo
 
 ```text
 $ cursor-route --version
-0.1.9
+0.1.12
 
 $ CURSOR_ROUTE_RELAXED=1 cursor-route health
-cursor-route v0.1.9
+cursor-route v0.1.12
 health: OK
 
 $ cursor-route start --lane mid --model flash --dry-run "Add a unit test for shellQuote"
@@ -149,18 +149,22 @@ Always-approve is **on** by default for **coding worktrees only**. It does not a
 
 | Flag | Model id | When |
 |------|----------|------|
-| `--model flash` (default) | `deepseek-v4-flash` | Cheap mid execute |
-| `--model pro` | `deepseek-v4-pro` | Harder mid / Grok **usage** stand-in |
+| `--model flash` (default) | `deepseek-v4-flash` | Cheap mid execute. Prefer this when Grok **usage** is out |
+| `--model vision` | `deepseek-v4-flash-vision-exp` | Screenshots / ui mocks / image prompts (or auto-pick) |
+| `--model pro` | `deepseek-v4-pro` | Harder mid / **hard backup** only — not the default Grok-out stand-in |
 | `--model deepseek-v4-pro[1m]` | `deepseek-v4-pro[1m]` | Large-context Pro (SKU preserved) |
 
 ```bash
 cursor-route start --lane mid "…"                    # Flash
-cursor-route start --lane mid --model pro "…"        # Pro
+cursor-route start --lane mid --model vision "…"     # Vision Flash
+cursor-route start --lane mid --model pro "…"        # Pro (harder mid / hard backup)
 # Or set default without a flag:
-export CURSOR_ROUTE_DS_MODEL=pro   # also honors ANTHROPIC_MODEL; --model overrides
+export CURSOR_ROUTE_DS_MODEL=flash   # also honors ANTHROPIC_MODEL; --model overrides
 ```
 
-**Grok auth ≠ usage-out:** if `cursor-route health` shows `worker:grok` ✗, run `grok login` (or set `XAI_API_KEY`). That is auth. Quota / subscription usage exhausted is different — use `--lane mid --model pro` as the stand-in, not a missing login.
+If `--model` and `CURSOR_ROUTE_DS_MODEL` / `ANTHROPIC_MODEL` are unset, a prompt that looks like a screenshot/image/png/jpg/jpeg/webp/ui mock/multimodal/vision auto-picks vision Flash. Explicit `--model flash|pro|vision` always wins.
+
+**Grok auth ≠ usage-out:** if `cursor-route health` shows `worker:grok` ✗, run `grok login` (or set `XAI_API_KEY`). That is auth, not the Pro case. When Grok **usage** is exhausted, stay on `--lane mid --model flash` (cheap default). `--model pro` is harder mid / hard backup only.
 
 `CURSOR_ROUTE_ALLOW_ANTHROPIC=1` is an expensive escape hatch: it does **not** pass DeepSeek `--model` ids (Anthropic would reject them).
 
@@ -180,8 +184,9 @@ export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash
 export CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash
 
 cursor-route health          # worker:claude-ds should be ✓; `lane:mid` is ✓ only when DeepSeek is proven
-cursor-route start --lane mid "…"                 # Flash (default)
-cursor-route start --lane mid --model pro "…"     # Pro when you need it
+cursor-route start --lane mid "…"                 # Flash (default; also when Grok usage is out)
+cursor-route start --lane mid --model vision "…"  # screenshots / ui mocks
+cursor-route start --lane mid --model pro "…"     # harder mid / hard backup only
 ```
 
 Persist the same vars under `~/.claude/settings.json` → `"env": { … }` if you want them every shell.
@@ -196,10 +201,10 @@ export DEEPSEEK_API_KEY=YOUR_DEEPSEEK_API_KEY   # from platform.deepseek.com
 
 cursor-route health                              # worker:deepseek should be ✓
 cursor-route start --worker deepseek "…"         # Flash (default)
-cursor-route start --worker deepseek --model pro "…"   # Pro when you need it
+cursor-route start --worker deepseek --model pro "…"   # harder mid / hard backup only
 ```
 
-The adapter launches `dsh --profile headless` with a **per-job Cordis patch** (`jobs/<id>.dsh-patch.yml`, mode 0600) that pins `--model flash|pro` (`deepseek-v4-pro[1m]` preserved) — it never rewrites `~/.dsh/settings.yaml`, so parallel jobs don't race. Always-approve maps to `DSH_PERMISSION_MODE=danger-full-access`; `--ask` drops to `workspace-write`. Your `DEEPSEEK_API_KEY` travels via env only — never in the launch command or patch. Override the binary with `CURSOR_ROUTE_DSH_BIN`.
+The adapter launches `dsh --profile headless` with a **per-job Cordis patch** (`jobs/<id>.dsh-patch.yml`, mode 0600) that pins `--model flash|pro|vision` (`deepseek-v4-pro[1m]` preserved) — it never rewrites `~/.dsh/settings.yaml`, so parallel jobs don't race. Always-approve maps to `DSH_PERMISSION_MODE=danger-full-access`; `--ask` drops to `workspace-write`. Your `DEEPSEEK_API_KEY` travels via env only — never in the launch command or patch. Override the binary with `CURSOR_ROUTE_DSH_BIN`.
 
 **Not the default:** bare `claude` still talking to Anthropic. Health refuses that so a misconfigured install cannot silently burn frontier $ rates. Escape hatch only: `CURSOR_ROUTE_ALLOW_ANTHROPIC=1`.
 
@@ -207,18 +212,26 @@ No DeepSeek yet? Use `--lane hard` / `--worker grok` (X Premium).
 
 ## OpenRouter setup (the free easy lane)
 
-`--lane easy` / `--worker openrouter` sends wording/draft prompts to OpenRouter's
-free model route (`openrouter/free`). Get a key at [openrouter.ai/keys](https://openrouter.ai/keys).
+`--lane easy` / `--worker openrouter` sends wording/draft prompts to OpenRouter
+and **live-picks the best free text model** at request time (`GET /models`, rank
+`:free` or $0 text models). Do not hardcode a specific model id as the default.
+Pin with `CURSOR_ROUTE_OPENROUTER_MODEL` or `--model provider/model`. Empty /
+`free` = live pick. If the catalog fetch fails, the fallback is OpenRouter's
+**router** id `openrouter/free` (a live router, not a locked model). Get a key
+at [openrouter.ai/keys](https://openrouter.ai/keys).
 
 ```bash
 export OPENROUTER_API_KEY=sk-or-v1-...        # from openrouter.ai/keys
-# optional:
-export CURSOR_ROUTE_OPENROUTER_MODEL=openrouter/free   # default
+# optional pin (skips the live catalog pick):
+export CURSOR_ROUTE_OPENROUTER_MODEL=qwen/qwen3-coder:free
 export OPENROUTER_BASE_URL=https://openrouter.ai/api/v1  # default
 
-cursor-route health          # worker:openrouter should be ✓
+cursor-route health          # worker:openrouter should be ✓ (never fetches /models)
 cursor-route start --lane easy "Rewrite this FAQ answer in 3 sentences"
+cursor-route start --lane easy --model free "…"          # live pick
 ```
+
+`health` never fetches the OpenRouter catalog (cache or fallback only), same as Zen.
 
 **Non-secret prompts only:** free OpenRouter models may log prompts, so the easy lane is for
 **wording/drafts without credentials**. The same refuse gate as every lane blocks
@@ -277,13 +290,13 @@ cursor-route is a public MIT CLI and Cursor skill that runs parallel coding work
 It uses the familiar strategist and worker-pane shape, but it is not a Codex clone. cursor-route uses Cursor as the planner and DeepSeek plus Grok CLI as workers. Codex is not required.
 
 **Does mid lane use Anthropic Claude?**  
-No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` and a DeepSeek key in `ANTHROPIC_AUTH_TOKEN`. Default model is Flash (`--model flash`); use `--model pro` for harder mid work or when Grok usage is exhausted (not the same as a missing `grok login`).
+No. The mid worker is DeepSeek. Claude Code is the harness, configured with `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic` and a DeepSeek key in `ANTHROPIC_AUTH_TOKEN`. Default model is Flash (`--model flash`) — keep Flash when Grok **usage** is out. `--model vision` is for screenshots / ui mocks. `--model pro` is harder mid / **hard backup only**, not the default Grok-out stand-in. A missing `grok login` is auth, not the Pro case.
 
 **How do I install?**  
 Run `npm i -g cursor-route`, install tmux if needed, then run `cursor-route health`. The package is available at https://www.npmjs.com/package/cursor-route, and the source is at https://github.com/cemini23/cursor-route.
 
 **Is it free?**  
-The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you. The easy lane can be free on OpenRouter's free-model route (`openrouter/free`). `--worker opencode` can run live OpenCode Zen free models (`--model free` ranks the catalog).
+The cursor-route code is open source under MIT. It does not make the worker services free. Your costs depend on Cursor, DeepSeek API usage, and the Grok access or balance available to you. The easy lane live-picks a free OpenRouter text model at start (fallback router `openrouter/free` only if the catalog fetch fails). `--worker opencode` can run live OpenCode Zen free models (`--model free` ranks the catalog).
 
 ## Related
 

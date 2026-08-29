@@ -1,8 +1,8 @@
 $ cursor-route --version
-0.1.9
+0.1.12
 
 $ CURSOR_ROUTE_RELAXED=1 cursor-route health
-cursor-route v0.1.9
+cursor-route v0.1.12
 health: OK
 
   ✓ tmux             ok
@@ -10,8 +10,9 @@ health: OK
   ✓ script(1)        ok (tty log capture)
   ✓ worker:grok      ok (auth checked at first start — run grok login if jobs fail) @ ~/.grok/bin/grok
   ✓ worker:claude-ds ok (claude-ds (DeepSeek shim); default model deepseek-v4-flash) @ ~/.local/bin/claude-ds
-  ✗ worker:openrouter OPENROUTER_API_KEY not set — export your OpenRouter key (easy lane model defaults to openrouter/free) @ node '~/Projects/cursor-route/dist/openrouter-run.js'
+  ✗ worker:openrouter OPENROUTER_API_KEY not set — export your OpenRouter key (easy lane live-picks a free model at start; pin with CURSOR_ROUTE_OPENROUTER_MODEL) @ node '~/Projects/cursor-route/dist/openrouter-run.js'
   ✗ worker:deepseek  dsh (@deepseek-ai/dsh) not found — install: npm i -g @deepseek-ai/dsh. Mid default remains claude-ds.
+  ✓ worker:opencode  ok (opencode run; --model free = live Zen pick, now opencode/x-preview-f-free; auth at first start — opencode auth login if jobs fail; mid default remains claude-ds) @ ~/.local/bin/opencode
   ✓ lane:mid         DeepSeek proven (claude-ds (DeepSeek shim))
   ✓ cursor_cli       optional ok (agent on PATH) — v0 supervisor is Cursor skill, not CLI
   ✓ relaxed          CURSOR_ROUTE_RELAXED=1 — tmux optional (headless OK)
@@ -26,6 +27,7 @@ command: cd '~/Projects/cursor-route' && '~/.local/bin/claude-ds' -PromptFile '~
 $ cursor-route start --lane easy --dry-run "Rewrite this FAQ answer in 3 sentences"
 dry-run job b2c3d4e5
 worker: openrouter
+model:  openrouter/free
 command: node '~/Projects/cursor-route/dist/openrouter-run.js' --prompt-file '~/.local/share/cursor-route/jobs/b2c3d4e5.prompt'
 
 $ cursor-route start --lane hard --dry-run "Refactor auth module; run tests; report verify evidence"

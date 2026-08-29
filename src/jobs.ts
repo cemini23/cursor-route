@@ -18,6 +18,8 @@ import {
   defaultDsModelFromEnv,
   DS_MODEL_IDS,
   openCodeModel,
+  openRouterModel,
+  promptLooksLikeVision,
   type Lane,
   type WorkerKind,
   type DsModelAlias,
@@ -38,7 +40,7 @@ export interface Job {
   status: JobStatus;
   worker: WorkerKind;
   lane?: Lane;
-  /** Worker model: flash|pro for claude-ds/deepseek; provider/model for opencode. */
+  /** Worker model: flash|pro|vision for claude-ds/deepseek; provider/model for opencode/openrouter. */
   model?: string;
   prompt: string;
   cwd: string;
@@ -194,13 +196,16 @@ function terminatePid(pid: number): boolean {
     if (!pidAlive(pid)) return true;
     sleepMs(100);
   }
-  trySignal("SIGKILL", true);
-  trySignal("SIGKILL", false);
+  const gKill = trySignal("SIGKILL", true);
+  const pKill = trySignal("SIGKILL", false);
   for (let i = 0; i < 10; i++) {
     if (!pidAlive(pid)) return true;
     sleepMs(100);
   }
-  return !pidAlive(pid);
+  if (!pidAlive(pid)) return true;
+  // Sandboxed `ps` (EPERM) treats unreaped zombies as alive. If SIGKILL was
+  // sent, killJob should succeed — refreshStatus still fail-safes to alive.
+  return gKill || pKill;
 }
 
 /** Refresh running jobs without inventing success from "session gone". */
@@ -281,9 +286,9 @@ export interface StartOptions {
   prompt: string;
   worker?: WorkerKind;
   lane?: Lane;
-  /** Mid-lane DeepSeek: flash (default) | pro (claude-ds + deepseek). Ignored by grok/openrouter. */
+  /** Mid-lane DeepSeek: flash (default) | vision | pro (claude-ds + deepseek). Ignored by grok. */
   model?: DsModelAlias;
-  /** Concrete DeepSeek id (preserves pro[1m]) or OpenCode provider/model. Derived from --model / env when unset. */
+  /** Concrete DeepSeek id (preserves pro[1m]) or OpenCode/OpenRouter provider/model. Derived from --model / env when unset. */
   modelId?: string;
   cwd?: string;
   alwaysApprove?: boolean;
@@ -341,18 +346,29 @@ export function startJob(opts: StartOptions): {
       model = opts.model;
       modelId = opts.modelId ?? DS_MODEL_IDS[opts.model];
     } else {
-      try {
-        const choice = defaultDsModelFromEnv();
-        dsAlias = choice.alias;
-        model = choice.alias;
-        modelId = opts.modelId ?? choice.id;
-      } catch (e) {
+      const envRaw = (process.env.CURSOR_ROUTE_DS_MODEL || process.env.ANTHROPIC_MODEL || "").trim();
+      if (envRaw) {
         try {
-          unlinkSync(paths.prompt);
-        } catch {
-          /* ignore */
+          const choice = defaultDsModelFromEnv();
+          dsAlias = choice.alias;
+          model = choice.alias;
+          modelId = opts.modelId ?? choice.id;
+        } catch (e) {
+          try {
+            unlinkSync(paths.prompt);
+          } catch {
+            /* ignore */
+          }
+          return { ok: false, error: (e as Error).message };
         }
-        return { ok: false, error: (e as Error).message };
+      } else if (promptLooksLikeVision(opts.prompt)) {
+        dsAlias = "vision";
+        model = "vision";
+        modelId = opts.modelId ?? DS_MODEL_IDS.vision;
+      } else {
+        dsAlias = "flash";
+        model = "flash";
+        modelId = opts.modelId ?? DS_MODEL_IDS.flash;
       }
     }
   } else if (worker === "opencode") {
@@ -360,6 +376,19 @@ export function startJob(opts: StartOptions): {
       const ocModel = openCodeModel(opts.modelId);
       model = ocModel;
       modelId = ocModel;
+    } catch (e) {
+      try {
+        unlinkSync(paths.prompt);
+      } catch {
+        /* ignore */
+      }
+      return { ok: false, error: (e as Error).message };
+    }
+  } else if (worker === "openrouter") {
+    try {
+      const orModel = openRouterModel(opts.modelId);
+      model = orModel;
+      modelId = orModel;
     } catch (e) {
       try {
         unlinkSync(paths.prompt);

@@ -24,27 +24,30 @@ You are the **orchestrator**. Do **not** implement bulk code in this Cursor sess
 
 | Lane | Worker | Use when |
 |------|--------|----------|
-| `easy` | `openrouter` (OpenRouter free models) | Wording / drafts — non-secret prompts only |
+| `easy` | `openrouter` (live OpenRouter free pick) | Wording / drafts — non-secret prompts only |
 | `mid` | `claude-ds` (DeepSeek via Claude Code harness) | Standard implement / refactor |
 | `hard` | `grok` | Premium plan in Cursor → Grok implement |
 
-Free OpenRouter models may log prompts — keep secrets off the easy lane (the CLI refuse gate still applies).
+Free OpenRouter models may log prompts — keep secrets off the easy lane (the CLI refuse gate still applies). Easy lane **live-picks** the best free text model at request time (unset / `--model free`). Pin with `CURSOR_ROUTE_OPENROUTER_MODEL` or `--model provider/model`. Fetch-fail fallback is the OpenRouter router `openrouter/free` only.
 
 ## claude-ds models
 
 One harness. Do not install a second coding loop.
 
-| Flag / role | Model | When |
-|-------------|-------|------|
-| default mid (`--model flash`) | `deepseek-v4-flash` | `--lane mid` cheap execute |
-| Grok stand-in (`--model pro`) | `deepseek-v4-pro` | Grok CLI **usage/quota** out (not a missing `grok login`) |
+| Flag | Model id | When |
+|------|----------|------|
+| `--model flash` (default) | `deepseek-v4-flash` | Cheap mid execute. Prefer this when Grok **usage** is out |
+| `--model vision` | `deepseek-v4-flash-vision-exp` | Screenshots / ui mocks / image prompts (or auto-pick) |
+| `--model pro` | `deepseek-v4-pro` | Harder mid / **hard backup** only — not the default Grok-out stand-in |
+| `--model deepseek-v4-pro[1m]` | preserved SKU | Large-context Pro |
 
 ```bash
 cursor-route start --lane mid --dir "$PWD" "…"
+cursor-route start --lane mid --model vision --dir "$PWD" "…"
 cursor-route start --lane mid --model pro --dir "$PWD" "…"
 ```
 
-If `worker:grok` is ✗ on health, that is usually **auth** (`grok login` / `XAI_API_KEY`) — not the Pro stand-in case.
+If `worker:grok` is ✗ on health, that is usually **auth** (`grok login` / `XAI_API_KEY`) — not the Pro case. When Grok **usage** is out, stay on Flash.
 
 ## Experimental: --worker deepseek (dsh)
 
@@ -116,6 +119,8 @@ Verify criteria are an **external eval contract** (AutoDesign pattern), fixed by
 - **External eval contract (AutoDesign):** do not rewrite Verify / Success criteria mid-run to make a failing job look green — capture + exit status are the contract (see Verify / claim closeout).
 - **Skill misevolution:** do not auto-edit `route-orch` or promote skill variants from worker trajectories without operator HITL — write-time approval ≠ safe retrieval later.
 - **On verify fail:** prefer reconsidering the plan/definition (wrong approach) over grinding the same tactic; attribute failure to stage when possible (spawn vs execute vs verify).
+- **Step-wise re-route (ProgRouter):** `--lane` is the first pick. If progress stalls or verify fails, `send` a correction or spawn a follow-up on a different worker/model — do not lock the first worker for the whole job. Parent still closes on capture/exit evidence.
+- **Do not auto-spawn N panes for multi-perspective:** spawn workers for **implementation parallelism** (independent files/jobs). Multi-perspective reasoning stays in the Cursor parent. Do not fan out “one agent per viewpoint.”
 
 ## Always-approve
 

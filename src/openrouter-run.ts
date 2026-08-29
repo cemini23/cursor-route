@@ -24,7 +24,7 @@ function parseArgs(argv: string[]): { promptFile?: string } {
     if (a === "-h" || a === "--help") {
       console.log(
         "usage: cursor-route/openrouter-run --prompt-file <path>\n" +
-          "env: OPENROUTER_API_KEY (required), CURSOR_ROUTE_OPENROUTER_MODEL, OPENROUTER_BASE_URL",
+          "env: OPENROUTER_API_KEY (required), CURSOR_ROUTE_OPENROUTER_MODEL (unset/free = live pick), OPENROUTER_BASE_URL",
       );
       process.exit(0);
     }

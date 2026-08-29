@@ -11,6 +11,10 @@ afterEach(() => {
   delete process.env.OPENROUTER_API_KEY;
   delete process.env.CURSOR_ROUTE_OPENROUTER_MODEL;
   delete process.env.OPENROUTER_BASE_URL;
+  delete process.env.CURSOR_ROUTE_OR_OFFLINE;
+  delete process.env.CURSOR_ROUTE_OR_CATALOG_JSON;
+  delete process.env.CURSOR_ROUTE_OR_CACHE_PATH;
+  delete process.env.CURSOR_ROUTE_OR_REFRESH;
 });
 
 describe("openrouter adapter", () => {
@@ -20,13 +24,36 @@ describe("openrouter adapter", () => {
     expect(h.worker).toBe("openrouter");
     expect(h.ok).toBe(false);
     expect(h.detail).toContain("OPENROUTER_API_KEY");
+    expect(h.detail).not.toMatch(/defaults to openrouter\/free/);
   });
 
   test("health passes with a fake key (no network)", () => {
     setKey();
-    const h = openRouterAdapter.health();
-    expect(h.ok).toBe(true);
-    expect(h.detail).toContain("openrouter/free");
+    const prev = {
+      model: process.env.CURSOR_ROUTE_OPENROUTER_MODEL,
+      offline: process.env.CURSOR_ROUTE_OR_OFFLINE,
+      json: process.env.CURSOR_ROUTE_OR_CATALOG_JSON,
+      cache: process.env.CURSOR_ROUTE_OR_CACHE_PATH,
+    };
+    delete process.env.CURSOR_ROUTE_OPENROUTER_MODEL;
+    process.env.CURSOR_ROUTE_OR_OFFLINE = "1";
+    delete process.env.CURSOR_ROUTE_OR_CATALOG_JSON;
+    process.env.CURSOR_ROUTE_OR_CACHE_PATH = "/tmp/cursor-route-or-health-missing.json";
+    try {
+      const h = openRouterAdapter.health();
+      expect(h.ok).toBe(true);
+      expect(h.detail.toLowerCase()).toMatch(/live pick/);
+      expect(h.detail).not.toMatch(/defaults to openrouter\/free/);
+    } finally {
+      if (prev.model === undefined) delete process.env.CURSOR_ROUTE_OPENROUTER_MODEL;
+      else process.env.CURSOR_ROUTE_OPENROUTER_MODEL = prev.model;
+      if (prev.offline === undefined) delete process.env.CURSOR_ROUTE_OR_OFFLINE;
+      else process.env.CURSOR_ROUTE_OR_OFFLINE = prev.offline;
+      if (prev.json === undefined) delete process.env.CURSOR_ROUTE_OR_CATALOG_JSON;
+      else process.env.CURSOR_ROUTE_OR_CATALOG_JSON = prev.json;
+      if (prev.cache === undefined) delete process.env.CURSOR_ROUTE_OR_CACHE_PATH;
+      else process.env.CURSOR_ROUTE_OR_CACHE_PATH = prev.cache;
+    }
   });
 
   test("buildLaunch passes key via env and never echoes it in the command", () => {
