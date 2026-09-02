@@ -116,10 +116,10 @@ docs/fixtures/generate-hero-demo.sh      # regenerate docs/fixtures/hero-demo.lo
 
 ```text
 $ cursor-route --version
-0.1.13
+0.1.14
 
 $ CURSOR_ROUTE_RELAXED=1 cursor-route health
-cursor-route v0.1.13
+cursor-route v0.1.14
 health: OK
 
 $ cursor-route start --lane mid --model flash --dry-run "Add a unit test for shellQuote"
@@ -214,7 +214,9 @@ No DeepSeek yet? Use `--lane hard` / `--worker grok` (X Premium).
 
 `--lane easy` / `--worker openrouter` sends wording/draft prompts to OpenRouter
 and **live-picks the best free text model** at request time (`GET /models`, rank
-`:free` or $0 text models). Do not hardcode a specific model id as the default.
+`:free` or $0 text models). The live rank prefers Qwen/GLM/Kimi coding free
+models over huge general free models (e.g. Nemotron 550B). Do not hardcode a
+specific model id as the default.
 Pin with `CURSOR_ROUTE_OPENROUTER_MODEL` or `--model provider/model`. Empty /
 `free` = live pick. If the catalog fetch fails, the fallback is OpenRouter's
 **router** id `openrouter/free` (a live router, not a locked model). Get a key

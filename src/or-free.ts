@@ -35,8 +35,6 @@ export interface OrFreePick {
 
 const EXCLUDE_RE =
   /lyria|whisper|tts|embed|embedding|image|vision-only|audio|diffusion|flux|stable-diffusion|moderation/i;
-const BOOST_RE =
-  /coder|instruct|chat|nemotron|qwen|llama|gemma|gpt-oss|kimi|glm|deepseek/i;
 
 function orModelsUrl(): string {
   const base = (process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1")
@@ -88,9 +86,22 @@ export function isOrFreeModel(m: OrModel): boolean {
   return tagged || pricedFree;
 }
 
-/** Higher boost wins. Coding/chat families beat generic free. No hardcoded id. */
+/**
+ * Toolkit-parity tier for a live OpenRouter free model id (first match wins).
+ * Huge general free models (Nemotron) rank well below coding/chat families so
+ * the easy-lane live pick does not land on a slow 550B generalist. Order
+ * matters: `qwen` is checked before `nemotron`, and the generic coding bucket
+ * (70) sits before `nemotron` exactly like the toolkit, so
+ * `nvidia/nemotron-3-550b:free` scores 15 — never 70. No hardcoded model id.
+ */
 export function orFreeBoost(id: string): number {
-  return BOOST_RE.test(id) ? 20 : 10;
+  if (/qwen/i.test(id)) return 100;
+  if (/(^|\/)z-ai\/glm|glm/i.test(id)) return 95;
+  if (/kimi|moonshot/i.test(id)) return 95;
+  if (/deepseek|hy-/i.test(id)) return 90;
+  if (/coder|instruct|chat|llama|gemma|gpt-oss|minimax/i.test(id)) return 70;
+  if (/nemotron/i.test(id)) return 15;
+  return 40;
 }
 
 export function rankOrFreeModels(models: OrModel[]): Array<{
@@ -110,16 +121,22 @@ export function rankOrFreeModels(models: OrModel[]): Array<{
       continue;
     }
     const ctx = Number.isFinite(Number(m.context_length)) ? Number(m.context_length) : 0;
+    const tier = orFreeBoost(id);
+    // Cap the context bonus at 131072 so a huge Nemotron ctx cannot outrank a
+    // higher tier on context alone: score = tier + min(ctx, 131072)/131072 * 5.
+    const score = tier + (Math.min(ctx, 131_072) / 131_072) * 5;
     out.push({
       id,
       name: (m.name || raw).trim(),
       context_length: ctx,
-      boost: orFreeBoost(id),
+      boost: score,
     });
   }
+  // Sort like the toolkit: score desc, then tier desc, then id asc.
   out.sort((a, b) => {
     if (b.boost !== a.boost) return b.boost - a.boost;
-    if (b.context_length !== a.context_length) return b.context_length - a.context_length;
+    const tierDiff = orFreeBoost(b.id) - orFreeBoost(a.id);
+    if (tierDiff !== 0) return tierDiff;
     return a.id.localeCompare(b.id);
   });
   return out;

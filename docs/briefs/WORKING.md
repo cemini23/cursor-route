@@ -1,9 +1,9 @@
 ---
 title: cursor-route workspace — working brief (edit in place)
 repo: ~/Projects/cursor-route
-npm: cursor-route@0.1.13 (LIVE on npm latest)
+npm: cursor-route@0.1.14 (not yet published — Kimi audit next)
 created: 2026-08-12
-updated: 2026-08-29
+updated: 2026-09-02
 ---
 
 # cursor-route — living brief
@@ -43,6 +43,7 @@ Install: `npm i -g cursor-route` → **0.1.13**. Release notes: [CHANGELOG.md](.
 - [x] **Live Zen free pick** — 0.1.11: `--model free` ranks `GET https://opencode.ai/zen/v1/models` (Ox Alpha first while listed; ~15 min cache; Ox Alpha fallback if fetch fails). Pin with `CURSOR_ROUTE_OPENCODE_MODEL`. Health stays offline (cache/fallback only).
 - [x] **Flash-first + vision + live OpenRouter pick** — 0.1.12: `--model flash` stays the cheap Grok-out default; `--model vision` + screenshot auto-pick; easy lane live-picks free OpenRouter text models (`openrouter/free` is fetch-fail fallback only). Health never fetches `/models`. `route-orch` ProgRouter + MoRe one-liners. Hero fixture regenerated to 0.1.12. No npm publish in this slice.
 - [x] **Kimi 0.1.13 follow-up** — do not cache OpenRouter fallback; health labels uncached fallback; no Authorization on GET /models; env-invalid model error names the env vars; `\bimage\b` vision trigger.
+- [x] **Super-audit OR ranker parity (0.1.14)** — tier-rank Qwen/GLM/Kimi above Nemotron 550B in `or-free.ts` (match agent-toolkit `select-openrouter-free-model.ps1`); brief `docs/briefs/2026-09-02_super-audit-or-ranker-parity.md`
 - [ ] **Hero GIF** — still outstanding; dry-run fixture ships as the substitute for now (`docs/fixtures/hero-demo.log` — see `docs/DEMO_GIF.md`)
 - [x] **Do not** paste private `ROUTE_KIT`, SIP, prod paths, or hang-watchdog env into this public repo
 
@@ -80,3 +81,4 @@ Install: `npm i -g cursor-route` → **0.1.13**. Release notes: [CHANGELOG.md](.
 | 2026-08-21 | Live Zen free pick (Ox Alpha first while listed; OpenRouter-style catalog rank) → 0.1.11 LIVE. |
 | 2026-08-29 | Flash-first docs, `--model vision` + auto-pick, live OpenRouter free pick, route-orch K318/K322, hero fixture 0.1.12. No npm publish. |
 | 2026-08-29 | Kimi audit follow-up → 0.1.13 LIVE on npm: no fallback cache, health labels, unauth GET /models, env error wording. |
+| 2026-09-02 | Tier-rank OpenRouter free picks in `or-free.ts` (Qwen 100 / GLM-Kimi 95 / DeepSeek 90 / coding 70 / Nemotron 15 / default 40; ctx bonus capped at 131072) → 0.1.14. Commit + tag `v0.1.14`. **No npm publish** — parent Kimi-audits then publishes. Mid stays claude-ds. |

@@ -2,7 +2,7 @@
 
 > Cursor stays the planner. DeepSeek (mid), Grok CLI (hard), and OpenRouter free models (easy) run parallel coding workers in tmux. `--worker opencode` is an opt-in coding agent on OpenCode Zen free models.
 
-MIT CLI + Cursor skill. npm: https://www.npmjs.com/package/cursor-route (latest **0.1.13**)
+MIT CLI + Cursor skill. npm: https://www.npmjs.com/package/cursor-route (latest **0.1.14**)
 GitHub: https://github.com/cemini23/cursor-route
 
 ## FAQ

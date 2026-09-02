@@ -62,10 +62,13 @@ describe("openrouter free catalog", () => {
     ).toBe(false);
   });
 
-  test("boost: coder/qwen outranks generic free; no hardcoded winner id", () => {
-    expect(orFreeBoost("qwen/qwen-coder:free")).toBe(20);
-    expect(orFreeBoost("acme/generic:free")).toBe(10);
-    expect(orFreeBoost("meta-llama/llama-3.3-70b-instruct:free")).toBe(20);
+  test("boost: tier ranks Qwen/GLM/Kimi above Nemotron; generic free is default", () => {
+    expect(orFreeBoost("qwen/qwen-coder:free")).toBe(100);
+    expect(orFreeBoost("z-ai/glm-5.2:free")).toBe(95);
+    expect(orFreeBoost("moonshotai/kimi-k2:free")).toBe(95);
+    expect(orFreeBoost("acme/generic:free")).toBe(40);
+    expect(orFreeBoost("meta-llama/llama-3.3-70b-instruct:free")).toBe(70);
+    expect(orFreeBoost("nvidia/nemotron-3-550b:free")).toBe(15);
   });
 
   test("rank prefers a :free coder with larger context over a generic :free", () => {
@@ -85,8 +88,40 @@ describe("openrouter free catalog", () => {
     expect(ranked[1]?.id).toBe("qwen/small-coder:free");
   });
 
+  test("huge Nemotron free model loses to GLM/Qwen on tier rank", () => {
+    const ranked = rankOrFreeModels([
+      { id: "nvidia/nemotron-3-550b:free", name: "Nemotron 3 550B", context_length: 262_144 },
+      { id: "z-ai/glm-5.2:free", name: "GLM 5.2", context_length: 32_768 },
+      { id: "qwen/qwen3-coder:free", name: "Qwen3 Coder", context_length: 32_768 },
+    ]);
+    expect(ranked[0]?.id).toBe("qwen/qwen3-coder:free");
+    expect(ranked[0]?.id).not.toBe("nvidia/nemotron-3-550b:free");
+    expect(ranked[1]?.id).toBe("z-ai/glm-5.2:free");
+    expect(ranked[2]?.id).toBe("nvidia/nemotron-3-550b:free");
+    expect(ranked[0]!.boost).toBeGreaterThan(ranked[2]!.boost);
+  });
+
+  test("huge ctx alone does not beat a higher tier (ctx bonus caps at 131072)", () => {
+    const ranked = rankOrFreeModels([
+      { id: "nvidia/nemotron-3-550b:free", context_length: 1_048_576 },
+      { id: "qwen/qwen3-coder:free", context_length: 1_000 },
+    ]);
+    expect(ranked[0]?.id).toBe("qwen/qwen3-coder:free");
+  });
+
   test("pickOrFreeModel uses the ranked catalog winner", () => {
     expect(pickOrFreeModel({ catalog: CATALOG })).toBe("qwen/qwen-coder:free");
+  });
+
+  test("pickOrFreeModel winner is not a huge Nemotron when GLM/Qwen are free", () => {
+    const winner = pickOrFreeModel({
+      catalog: [
+        { id: "nvidia/nemotron-3-550b:free", name: "Nemotron 3 550B", context_length: 262_144 },
+        { id: "z-ai/glm-5.2:free", name: "GLM 5.2", context_length: 32_768 },
+      ],
+    });
+    expect(winner).not.toBe("nvidia/nemotron-3-550b:free");
+    expect(winner).toBe("z-ai/glm-5.2:free");
   });
 
   test("offline / empty catalog falls back to the OpenRouter router", () => {

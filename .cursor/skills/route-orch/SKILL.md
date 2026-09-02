@@ -28,7 +28,7 @@ You are the **orchestrator**. Do **not** implement bulk code in this Cursor sess
 | `mid` | `claude-ds` (DeepSeek via Claude Code harness) | Standard implement / refactor |
 | `hard` | `grok` | Premium plan in Cursor → Grok implement |
 
-Free OpenRouter models may log prompts — keep secrets off the easy lane (the CLI refuse gate still applies). Easy lane **live-picks** the best free text model at request time (unset / `--model free`). Pin with `CURSOR_ROUTE_OPENROUTER_MODEL` or `--model provider/model`. Fetch-fail fallback is the OpenRouter router `openrouter/free` only.
+Free OpenRouter models may log prompts — keep secrets off the easy lane (the CLI refuse gate still applies). Easy lane **live-picks** the best free text model at request time (unset / `--model free`), preferring Qwen/GLM/Kimi coding free models over huge general free models (Nemotron). Pin with `CURSOR_ROUTE_OPENROUTER_MODEL` or `--model provider/model`. Fetch-fail fallback is the OpenRouter router `openrouter/free` only.
 
 ## claude-ds models
 

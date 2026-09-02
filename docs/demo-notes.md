@@ -6,10 +6,10 @@ Simulated capture output for README / tweet assets — replace with a real GIF o
 
 ```
 $ cursor-route --version
-0.1.13
+0.1.14
 
 $ cursor-route health
-cursor-route v0.1.13
+cursor-route v0.1.14
 health: OK
   ✓ tmux
   ✓ runtime          bun ok

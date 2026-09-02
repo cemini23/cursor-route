@@ -4,6 +4,11 @@
 
 _(none)_
 
+## 0.1.14 — 2026-09-02
+
+- Easy-lane OpenRouter live pick now **tier-ranks** free models like the toolkit: Qwen 100, GLM/Kimi 95, DeepSeek 90, coding/chat families 70, **Nemotron 15**, default 40. Score adds a context bonus capped at 131072 (`tier + min(ctx, 131072)/131072 × 5`) so a huge Nemotron 550B free model can no longer outrank Qwen/GLM/Kimi on context alone.
+- Mid lane still `claude-ds`; no worker swap. Hero demo fixture regenerated to **0.1.14**.
+
 ## 0.1.13 — 2026-08-29
 
 - OpenRouter live-pick: do **not** cache the fetch-fail fallback (`openrouter/free`) — health no longer presents a stale fallback as `now openrouter/free`. Health says `cached <id>` only for a ranked catalog hit; otherwise `no catalog cache, fetch-fail fallback openrouter/free`.
