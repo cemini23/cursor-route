@@ -88,6 +88,47 @@ describe("openrouter free catalog", () => {
     expect(ranked[1]?.id).toBe("qwen/small-coder:free");
   });
 
+  test("all seven tier buckets", () => {
+    expect(orFreeBoost("qwen/qwen3-coder:free")).toBe(100);
+    expect(orFreeBoost("z-ai/glm-5.2:free")).toBe(95);
+    expect(orFreeBoost("moonshotai/kimi-k2:free")).toBe(95);
+    expect(orFreeBoost("deepseek/deepseek-chat:free")).toBe(90);
+    expect(orFreeBoost("acme/hy-foo:free")).toBe(90);
+    expect(orFreeBoost("meta-llama/llama-3.3-70b-instruct:free")).toBe(70);
+    expect(orFreeBoost("google/gemma-3-12b:free")).toBe(70);
+    expect(orFreeBoost("openai/gpt-oss-120b:free")).toBe(70);
+    expect(orFreeBoost("minimax/minimax-m1:free")).toBe(70);
+    expect(orFreeBoost("nvidia/nemotron-3-550b:free")).toBe(15);
+    expect(orFreeBoost("acme/generic:free")).toBe(40);
+  });
+
+  test("equal score: higher tier wins (Qwen ctx 0 vs GLM at ctx cap)", () => {
+    const ranked = rankOrFreeModels([
+      { id: "qwen/qwen3-coder:free", context_length: 0 },
+      { id: "z-ai/glm-5.2:free", context_length: 131_072 },
+    ]);
+    expect(ranked[0]?.boost).toBe(ranked[1]?.boost);
+    expect(ranked[0]?.id).toBe("qwen/qwen3-coder:free");
+  });
+
+  test("equal score same tier: id ascending", () => {
+    const ranked = rankOrFreeModels([
+      { id: "qwen/zzz-coder:free", context_length: 8_000 },
+      { id: "qwen/aaa-coder:free", context_length: 8_000 },
+    ]);
+    expect(ranked[0]?.id).toBe("qwen/aaa-coder:free");
+    expect(ranked[1]?.id).toBe("qwen/zzz-coder:free");
+  });
+
+  test("ctx bonus caps at 131072: same-tier 131072 vs 262144 ties then id asc", () => {
+    const ranked = rankOrFreeModels([
+      { id: "qwen/zzz-coder:free", context_length: 262_144 },
+      { id: "qwen/aaa-coder:free", context_length: 131_072 },
+    ]);
+    expect(ranked[0]?.boost).toBe(ranked[1]?.boost);
+    expect(ranked[0]?.id).toBe("qwen/aaa-coder:free");
+  });
+
   test("huge Nemotron free model loses to GLM/Qwen on tier rank", () => {
     const ranked = rankOrFreeModels([
       { id: "nvidia/nemotron-3-550b:free", name: "Nemotron 3 550B", context_length: 262_144 },
@@ -208,6 +249,18 @@ describe("openRouterModel live pick", () => {
       const cache = process.env.CURSOR_ROUTE_OR_CACHE_PATH!;
       expect(openRouterModel()).toBe("openrouter/free");
       expect(existsSync(cache)).toBe(false);
+    });
+  });
+
+  test("ranked pick is cached; offline second call returns the cached id", () => {
+    isolate(() => {
+      process.env.CURSOR_ROUTE_OR_CATALOG_JSON = JSON.stringify({ data: CATALOG });
+      expect(openRouterModel("free")).toBe("qwen/qwen-coder:free");
+      delete process.env.CURSOR_ROUTE_OR_REFRESH;
+      process.env.CURSOR_ROUTE_OR_OFFLINE = "1";
+      delete process.env.CURSOR_ROUTE_OR_CATALOG_JSON;
+      expect(existsSync(process.env.CURSOR_ROUTE_OR_CACHE_PATH!)).toBe(true);
+      expect(openRouterModel("free")).toBe("qwen/qwen-coder:free");
     });
   });
 });
