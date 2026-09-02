@@ -1,7 +1,7 @@
 ---
 title: cursor-route workspace — working brief (edit in place)
 repo: ~/Projects/cursor-route
-npm: cursor-route@0.1.14 (not yet published — Kimi audit next)
+npm: cursor-route@0.1.14 LIVE
 created: 2026-08-12
 updated: 2026-09-02
 ---
@@ -25,7 +25,7 @@ Cursor Agent plans. Workers run in tmux via `cursor-route`:
 
 Always-approve on for coding worktrees (`--ask` / `CURSOR_ROUTE_ASK=1` to opt out) — not LIVE Discord/trading. Jobs live in `~/.local/share/cursor-route/jobs`, not in this clone.
 
-Install: `npm i -g cursor-route` → **0.1.13**. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
+Install: `npm i -g cursor-route` → **0.1.14**. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
 
 ## Open (edit / check off)
 
@@ -81,4 +81,5 @@ Install: `npm i -g cursor-route` → **0.1.13**. Release notes: [CHANGELOG.md](.
 | 2026-08-21 | Live Zen free pick (Ox Alpha first while listed; OpenRouter-style catalog rank) → 0.1.11 LIVE. |
 | 2026-08-29 | Flash-first docs, `--model vision` + auto-pick, live OpenRouter free pick, route-orch K318/K322, hero fixture 0.1.12. No npm publish. |
 | 2026-08-29 | Kimi audit follow-up → 0.1.13 LIVE on npm: no fallback cache, health labels, unauth GET /models, env error wording. |
-| 2026-09-02 | Tier-rank OpenRouter free picks in `or-free.ts` (Qwen 100 / GLM-Kimi 95 / DeepSeek 90 / coding 70 / Nemotron 15 / default 40; ctx bonus capped at 131072) → 0.1.14. Commit + tag `v0.1.14`. **No npm publish** — parent Kimi-audits then publishes. Mid stays claude-ds. |
+| 2026-09-02 | Tier-rank OpenRouter free picks in `or-free.ts` (Qwen 100 / GLM-Kimi 95 / DeepSeek 90 / coding 70 / Nemotron 15 / default 40; ctx bonus capped at 131072) → 0.1.14. Commit + tag `v0.1.14`. Mid stays claude-ds. |
+| 2026-09-02 | Kimi audit follow-up → ranker tests (seven tiers, score/id ties, 131072 cap, cache round-trip) then **0.1.14 LIVE** on npm. |
