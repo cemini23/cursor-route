@@ -116,17 +116,17 @@ docs/fixtures/generate-hero-demo.sh      # regenerate docs/fixtures/hero-demo.lo
 
 ```text
 $ cursor-route --version
-0.1.14
+0.1.15
 
 $ CURSOR_ROUTE_RELAXED=1 cursor-route health
-cursor-route v0.1.14
+cursor-route v0.1.15
 health: OK
 
 $ cursor-route start --lane mid --model flash --dry-run "Add a unit test for shellQuote"
 dry-run job a1b2c3d4
 worker: claude-ds
 model:  flash
-command: cd '~/Projects/cursor-route' && '~/.local/bin/claude-ds' -PromptFile '~/.local/share/cursor-route/jobs/a1b2c3d4.prompt' -Model 'deepseek-v4-flash' --dangerously-skip-permissions
+command: cd '~/Projects/cursor-route' && '~/.local/bin/claude-ds' -PromptFile '~/.local/share/cursor-route/jobs/a1b2c3d4.prompt' -Model 'deepseek-flash' --dangerously-skip-permissions
 
 $ cursor-route jobs --json
 []
@@ -145,26 +145,27 @@ A real hero GIF is still pending — recording steps live in [docs/DEMO_GIF.md](
 
 Always-approve is **on** by default for **coding worktrees only**. It does not authorize LIVE Discord, trading, or irreversible SaaS. Opt out: `--ask` or `CURSOR_ROUTE_ASK=1`.
 
-### Mid models (Flash vs Pro)
+### Mid models (Flash)
 
 | Flag | Model id | When |
 |------|----------|------|
-| `--model flash` (default) | `deepseek-v4-flash` | Cheap mid execute. Prefer this when Grok **usage** is out |
-| `--model vision` | `deepseek-v4-flash-vision-exp` | Screenshots / ui mocks / image prompts (or auto-pick) |
-| `--model pro` | `deepseek-v4-pro` | Harder mid / **hard backup** only — not the default Grok-out stand-in |
-| `--model deepseek-v4-pro[1m]` | `deepseek-v4-pro[1m]` | Large-context Pro (SKU preserved) |
+| `--model flash` (default) | `deepseek-flash` | Cheap mid execute. Prefer this when Grok **usage** is out |
+| `--model vision` | `deepseek-flash` | Screenshots / ui mocks / image prompts (or auto-pick). V4.1 Flash has native vision |
+| `--model pro` | `deepseek-flash` | Legacy alias — Pro is off rotation |
+
+This map matches DeepSeek's 2026-09-10 API id `deepseek-flash`. `--model pro` and `--model vision` are legacy aliases to the same id (including `deepseek-v4-pro[1m]`).
 
 ```bash
 cursor-route start --lane mid "…"                    # Flash
-cursor-route start --lane mid --model vision "…"     # Vision Flash
-cursor-route start --lane mid --model pro "…"        # Pro (harder mid / hard backup)
+cursor-route start --lane mid --model vision "…"     # legacy alias → deepseek-flash
+cursor-route start --lane mid --model pro "…"        # legacy alias → deepseek-flash
 # Or set default without a flag:
 export CURSOR_ROUTE_DS_MODEL=flash   # also honors ANTHROPIC_MODEL; --model overrides
 ```
 
-If `--model` and `CURSOR_ROUTE_DS_MODEL` / `ANTHROPIC_MODEL` are unset, a prompt that looks like a screenshot/image/png/jpg/jpeg/webp/ui mock/multimodal/vision auto-picks vision Flash. Explicit `--model flash|pro|vision` always wins.
+If `--model` and `CURSOR_ROUTE_DS_MODEL` / `ANTHROPIC_MODEL` are unset, a prompt that looks like a screenshot/image/png/jpg/jpeg/webp/ui mock/multimodal/vision auto-picks the vision alias (`job.model` is `vision`; launch id is still `deepseek-flash`). Explicit `--model flash|pro|vision` always wins.
 
-**Grok auth ≠ usage-out:** if `cursor-route health` shows `worker:grok` ✗, run `grok login` (or set `XAI_API_KEY`). That is auth, not the Pro case. When Grok **usage** is exhausted, stay on `--lane mid --model flash` (cheap default). `--model pro` is harder mid / hard backup only.
+**Grok auth ≠ usage-out:** if `cursor-route health` shows `worker:grok` ✗, run `grok login` (or set `XAI_API_KEY`). That is auth, not a model switch. When Grok **usage** is exhausted, stay on `--lane mid --model flash` (cheap default). `--model pro` is a legacy alias to `deepseek-flash`.
 
 `CURSOR_ROUTE_ALLOW_ANTHROPIC=1` is an expensive escape hatch: it does **not** pass DeepSeek `--model` ids (Anthropic would reject them).
 
@@ -180,18 +181,18 @@ npm i -g @anthropic-ai/claude-code
 export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
 export ANTHROPIC_AUTH_TOKEN=YOUR_DEEPSEEK_API_KEY   # from platform.deepseek.com
 # Optional shell defaults (CLI --model overrides ANTHROPIC_MODEL for the job):
-export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash
-export CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash
+export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-flash
+export CLAUDE_CODE_SUBAGENT_MODEL=deepseek-flash
 
 cursor-route health          # worker:claude-ds should be ✓; `lane:mid` is ✓ only when DeepSeek is proven
 cursor-route start --lane mid "…"                 # Flash (default; also when Grok usage is out)
-cursor-route start --lane mid --model vision "…"  # screenshots / ui mocks
-cursor-route start --lane mid --model pro "…"     # harder mid / hard backup only
+cursor-route start --lane mid --model vision "…"  # screenshots / ui mocks (same launch id)
+cursor-route start --lane mid --model pro "…"     # legacy alias → deepseek-flash
 ```
 
 Persist the same vars under `~/.claude/settings.json` → `"env": { … }` if you want them every shell.
 
-**Also accepted:** `claude-ds` or `deepseek-claude` on PATH (Cemini shims). The adapter passes `-Model deepseek-v4-flash|deepseek-v4-pro`.
+**Also accepted:** `claude-ds` or `deepseek-claude` on PATH (Cemini shims). The adapter passes `-Model deepseek-flash`.
 
 **Experimental:** `--worker deepseek` runs the official DeepSeek Harness (`dsh`, npm `@deepseek-ai/dsh`) as an opt-in worker — **mid stays on `claude-ds`**; don't default lanes here.
 
@@ -201,10 +202,10 @@ export DEEPSEEK_API_KEY=YOUR_DEEPSEEK_API_KEY   # from platform.deepseek.com
 
 cursor-route health                              # worker:deepseek should be ✓
 cursor-route start --worker deepseek "…"         # Flash (default)
-cursor-route start --worker deepseek --model pro "…"   # harder mid / hard backup only
+cursor-route start --worker deepseek --model pro "…"   # legacy alias → deepseek-flash
 ```
 
-The adapter launches `dsh --profile headless` with a **per-job Cordis patch** (`jobs/<id>.dsh-patch.yml`, mode 0600) that pins `--model flash|pro|vision` (`deepseek-v4-pro[1m]` preserved) — it never rewrites `~/.dsh/settings.yaml`, so parallel jobs don't race. Always-approve maps to `DSH_PERMISSION_MODE=danger-full-access`; `--ask` drops to `workspace-write`. Your `DEEPSEEK_API_KEY` travels via env only — never in the launch command or patch. Override the binary with `CURSOR_ROUTE_DSH_BIN`.
+The adapter launches `dsh --profile headless` with a **per-job Cordis patch** (`jobs/<id>.dsh-patch.yml`, mode 0600) that pins `--model flash|pro|vision` to `deepseek-flash` — it never rewrites `~/.dsh/settings.yaml`, so parallel jobs don't race. Always-approve maps to `DSH_PERMISSION_MODE=danger-full-access`; `--ask` drops to `workspace-write`. Your `DEEPSEEK_API_KEY` travels via env only — never in the launch command or patch. Override the binary with `CURSOR_ROUTE_DSH_BIN`.
 
 **Not the default:** bare `claude` still talking to Anthropic. Health refuses that so a misconfigured install cannot silently burn frontier $ rates. Escape hatch only: `CURSOR_ROUTE_ALLOW_ANTHROPIC=1`.
 

@@ -23,10 +23,13 @@ export const WORKERS: WorkerKind[] = ["grok", "claude-ds", "openrouter", "deepse
 export const LANES: Lane[] = ["easy", "mid", "hard"];
 export const DS_MODELS: DsModelAlias[] = ["flash", "pro", "vision"];
 
+/** DeepSeek V4.1 Flash (native vision). Matches the 2026-09-10 API id. */
+export const DS_FLASH_ID = "deepseek-flash";
+
 export const DS_MODEL_IDS: Record<DsModelAlias, string> = {
-  flash: "deepseek-v4-flash",
-  pro: "deepseek-v4-pro",
-  vision: "deepseek-v4-flash-vision-exp",
+  flash: DS_FLASH_ID,
+  pro: DS_FLASH_ID,
+  vision: DS_FLASH_ID,
 };
 
 /** Prompt looks like a screenshot / image / ui mock — vision auto-pick. */
@@ -38,26 +41,35 @@ export function promptLooksLikeVision(prompt: string): boolean {
 }
 
 /**
- * Resolve --model / env to alias + concrete model id.
- * Preserves `deepseek-v4-pro[1m]` (does not silently strip the SKU).
+ * Resolve --model / env to alias + launch id.
+ * V4.1 Flash is native vision; Pro is a legacy alias, not a rotation step.
+ * All known aliases launch `deepseek-flash`.
  * Empty → Flash.
  */
 export function resolveDsModel(raw?: string | null): DsModelChoice {
   if (!raw || !raw.trim()) {
-    return { alias: "flash", id: DS_MODEL_IDS.flash };
+    return { alias: "flash", id: DS_FLASH_ID };
   }
-  const v = raw.trim().toLowerCase();
-  if (v === "flash" || v === "deepseek-v4-flash") {
-    return { alias: "flash", id: DS_MODEL_IDS.flash };
+  // Trim, lower-case, strip a trailing `[…]` SKU (`deepseek-v4-pro[1m]` → `deepseek-v4-pro`).
+  const v = raw.trim().toLowerCase().replace(/\[[^\]]*\]\s*$/, "");
+  if (
+    v === "flash" ||
+    v === "deepseek-flash" ||
+    v === "deepseek-v4-flash" ||
+    v === "deepseek-v4.1-flash"
+  ) {
+    return { alias: "flash", id: DS_FLASH_ID };
   }
   if (v === "pro" || v === "deepseek-v4-pro") {
-    return { alias: "pro", id: DS_MODEL_IDS.pro };
+    return { alias: "pro", id: DS_FLASH_ID };
   }
-  if (v === "vision" || v === "deepseek-v4-flash-vision-exp") {
-    return { alias: "vision", id: DS_MODEL_IDS.vision };
-  }
-  if (v === "deepseek-v4-pro[1m]") {
-    return { alias: "pro", id: "deepseek-v4-pro[1m]" };
+  if (
+    v === "vision" ||
+    v === "flash-vision" ||
+    v === "deepseek-v4-flash-vision" ||
+    v === "deepseek-v4-flash-vision-exp"
+  ) {
+    return { alias: "vision", id: DS_FLASH_ID };
   }
   throw new Error(`Invalid DeepSeek model ${raw}; expected flash|pro|vision`);
 }
@@ -111,7 +123,7 @@ function maxConcurrentJobsFromEnv(): number {
  */
 export const config = {
   product: "cursor-route",
-  version: "0.1.14",
+  version: "0.1.15",
   get jobsDir(): string {
     return defaultJobsDir();
   },

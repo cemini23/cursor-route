@@ -36,10 +36,11 @@ One harness. Do not install a second coding loop.
 
 | Flag | Model id | When |
 |------|----------|------|
-| `--model flash` (default) | `deepseek-v4-flash` | Cheap mid execute. Prefer this when Grok **usage** is out |
-| `--model vision` | `deepseek-v4-flash-vision-exp` | Screenshots / ui mocks / image prompts (or auto-pick) |
-| `--model pro` | `deepseek-v4-pro` | Harder mid / **hard backup** only — not the default Grok-out stand-in |
-| `--model deepseek-v4-pro[1m]` | preserved SKU | Large-context Pro |
+| `--model flash` (default) | `deepseek-flash` | Cheap mid execute. Prefer this when Grok **usage** is out |
+| `--model vision` | `deepseek-flash` | Screenshots / ui mocks / image prompts (or auto-pick) |
+| `--model pro` | `deepseek-flash` | Legacy alias — Pro is off rotation |
+
+V4.1 Flash has native vision; `--model pro` is a legacy alias (off rotation).
 
 ```bash
 cursor-route start --lane mid --dir "$PWD" "…"
@@ -47,7 +48,7 @@ cursor-route start --lane mid --model vision --dir "$PWD" "…"
 cursor-route start --lane mid --model pro --dir "$PWD" "…"
 ```
 
-If `worker:grok` is ✗ on health, that is usually **auth** (`grok login` / `XAI_API_KEY`) — not the Pro case. When Grok **usage** is out, stay on Flash.
+If `worker:grok` is ✗ on health, that is usually **auth** (`grok login` / `XAI_API_KEY`) — not a model switch. When Grok **usage** is out, stay on Flash.
 
 ## Experimental: --worker deepseek (dsh)
 

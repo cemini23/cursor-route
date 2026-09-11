@@ -57,7 +57,7 @@ Usage:
 Start options:
   --worker <grok|claude-ds|openrouter|deepseek|opencode>  Worker adapter (default: grok; deepseek/opencode = opt-in)
   --lane <easy|mid|hard>                Lane → worker (easy=openrouter, mid=claude-ds, hard=grok)
-  --model <flash|pro|vision|free|provider/model>  claude-ds/deepseek: flash|pro|vision. opencode/openrouter: free (live catalog pick) or provider/model
+  --model <flash|pro|vision|free|provider/model>  claude-ds/deepseek: flash|pro|vision (aliases map to deepseek-flash). opencode/openrouter: free (live catalog pick) or provider/model
   --dir <path>                          Working directory (default: cwd)
   --ask                                 Disable always-approve for this job
   --dry-run                             Print launch command; do not start
@@ -70,7 +70,7 @@ Env:
   CURSOR_ROUTE_MAX_JOBS              Max active jobs (default: 50)
   CURSOR_ROUTE_RELAXED=1             health OK without tmux/workers (CI / infra smoke)
   CURSOR_ROUTE_ALLOW_ANTHROPIC=1     Allow mid-lane on Anthropic Claude (expensive; not default; --model ignored)
-  CURSOR_ROUTE_DS_MODEL              Default mid model flash|pro|vision (or full ids / deepseek-v4-pro[1m]); overridden by --model
+  CURSOR_ROUTE_DS_MODEL              Default mid model flash|pro|vision (aliases map to deepseek-flash); overridden by --model
   CURSOR_ROUTE_GROK_BIN              Override the grok binary path (tests / power users)
   CURSOR_ROUTE_CLAUDE_DS_BIN         Override the claude-ds binary path (tests / power users)
   CURSOR_ROUTE_DSH_BIN               Override the dsh binary path (tests / power users)

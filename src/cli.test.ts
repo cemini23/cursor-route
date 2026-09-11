@@ -52,24 +52,32 @@ describe("resolveWorker", () => {
 
 describe("resolveDsModel", () => {
   test("defaults to flash", () => {
-    expect(resolveDsModel()).toEqual({ alias: "flash", id: "deepseek-v4-flash" });
+    expect(resolveDsModel()).toEqual({ alias: "flash", id: "deepseek-flash" });
+    expect(resolveDsModel("  ")).toEqual({ alias: "flash", id: "deepseek-flash" });
     expect(resolveDsModelAlias("")).toBe("flash");
   });
   test("accepts aliases and full ids", () => {
-    expect(resolveDsModel("flash").id).toBe("deepseek-v4-flash");
-    expect(resolveDsModel("pro").id).toBe("deepseek-v4-pro");
-    expect(resolveDsModel("vision").id).toBe("deepseek-v4-flash-vision-exp");
+    expect(resolveDsModel("flash")).toEqual({ alias: "flash", id: "deepseek-flash" });
+    expect(resolveDsModel("deepseek-flash")).toEqual({ alias: "flash", id: "deepseek-flash" });
+    expect(resolveDsModel("deepseek-v4-flash")).toEqual({ alias: "flash", id: "deepseek-flash" });
+    expect(resolveDsModel("deepseek-v4.1-flash")).toEqual({ alias: "flash", id: "deepseek-flash" });
+    expect(resolveDsModel("pro")).toEqual({ alias: "pro", id: "deepseek-flash" });
+    expect(resolveDsModel("deepseek-v4-pro")).toEqual({ alias: "pro", id: "deepseek-flash" });
+    expect(resolveDsModel("deepseek-v4-pro[1m]")).toEqual({ alias: "pro", id: "deepseek-flash" });
+    expect(resolveDsModel("vision")).toEqual({ alias: "vision", id: "deepseek-flash" });
+    expect(resolveDsModel("flash-vision")).toEqual({ alias: "vision", id: "deepseek-flash" });
+    expect(resolveDsModel("deepseek-v4-flash-vision")).toEqual({
+      alias: "vision",
+      id: "deepseek-flash",
+    });
     expect(resolveDsModel("deepseek-v4-flash-vision-exp")).toEqual({
       alias: "vision",
-      id: "deepseek-v4-flash-vision-exp",
-    });
-    expect(resolveDsModel("deepseek-v4-pro[1m]")).toEqual({
-      alias: "pro",
-      id: "deepseek-v4-pro[1m]",
+      id: "deepseek-flash",
     });
   });
   test("rejects unknown", () => {
     expect(() => resolveDsModel("opus")).toThrow(/flash\|pro\|vision/);
+    expect(() => resolveDsModel("deepseek-chat")).toThrow(/flash\|pro\|vision/);
   });
 });
 
@@ -93,7 +101,7 @@ describe("promptLooksLikeVision", () => {
 });
 
 describe("claude-ds -Model", () => {
-  test("shim path passes -Model deepseek-v4-flash by default", () => {
+  test("shim path passes -Model deepseek-flash by default", () => {
     const prev = process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
     const prevDs = process.env.CURSOR_ROUTE_DS_MODEL;
     const prevAm = process.env.ANTHROPIC_MODEL;
@@ -107,7 +115,9 @@ describe("claude-ds -Model", () => {
         alwaysApprove: true,
       });
       expect(plan.command).toContain("-Model");
-      expect(plan.command).toContain("deepseek-v4-flash");
+      expect(plan.command).toContain("deepseek-flash");
+      expect(plan.command).not.toContain("deepseek-v4-flash");
+      expect(plan.command).not.toContain("deepseek-v4-pro");
     } finally {
       if (prev === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
       else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev;
@@ -117,7 +127,7 @@ describe("claude-ds -Model", () => {
       else process.env.ANTHROPIC_MODEL = prevAm;
     }
   });
-  test("vision alias maps to deepseek-v4-flash-vision-exp", () => {
+  test("vision alias maps to deepseek-flash", () => {
     const prev = process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
     process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = "/tmp/fake-claude-ds";
     try {
@@ -127,14 +137,14 @@ describe("claude-ds -Model", () => {
         alwaysApprove: true,
         model: "vision",
       });
-      expect(plan.command).toContain("deepseek-v4-flash-vision-exp");
-      expect(plan.command).not.toContain("deepseek-v4-flash'");
+      expect(plan.command).toContain("deepseek-flash");
+      expect(plan.command).not.toContain("deepseek-v4-flash-vision-exp");
     } finally {
       if (prev === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
       else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev;
     }
   });
-  test("pro alias maps to deepseek-v4-pro", () => {
+  test("pro alias maps to deepseek-flash", () => {
     const prev = process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
     process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = "/tmp/fake-claude-ds";
     try {
@@ -144,14 +154,14 @@ describe("claude-ds -Model", () => {
         alwaysApprove: true,
         model: "pro",
       });
-      expect(plan.command).toContain("deepseek-v4-pro");
-      expect(plan.command).not.toContain("deepseek-v4-flash");
+      expect(plan.command).toContain("deepseek-flash");
+      expect(plan.command).not.toContain("deepseek-v4-pro");
     } finally {
       if (prev === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
       else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev;
     }
   });
-  test("preserves deepseek-v4-pro[1m] via modelId", () => {
+  test("legacy deepseek-v4-pro[1m] modelId maps to deepseek-flash", () => {
     const prev = process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
     process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = "/tmp/fake-claude-ds";
     try {
@@ -162,7 +172,8 @@ describe("claude-ds -Model", () => {
         model: "pro",
         modelId: "deepseek-v4-pro[1m]",
       });
-      expect(plan.command).toContain("deepseek-v4-pro[1m]");
+      expect(plan.command).toContain("deepseek-flash");
+      expect(plan.command).not.toContain("deepseek-v4-pro");
     } finally {
       if (prev === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
       else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev;
@@ -232,8 +243,8 @@ describe("startJob product path", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.job.model).toBe("pro");
-      expect(result.command).toContain("deepseek-v4-pro");
-      expect(result.command).not.toContain("deepseek-v4-flash");
+      expect(result.command).toContain("deepseek-flash");
+      expect(result.command).not.toContain("deepseek-v4-pro");
     } finally {
       if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
       else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev.bin;
@@ -306,7 +317,8 @@ describe("startJob product path", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.job.model).toBe("vision");
-      expect(result.command).toContain("deepseek-v4-flash-vision-exp");
+      expect(result.command).toContain("deepseek-flash");
+      expect(result.command).not.toContain("deepseek-v4-flash-vision-exp");
     } finally {
       if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
       else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev.bin;
@@ -342,7 +354,7 @@ describe("startJob product path", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.job.model).toBe("flash");
-      expect(result.command).toContain("deepseek-v4-flash");
+      expect(result.command).toContain("deepseek-flash");
       expect(result.command).not.toContain("deepseek-v4-flash-vision-exp");
     } finally {
       if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
@@ -380,6 +392,45 @@ describe("startJob product path", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.job.model).toBe("flash");
+      expect(result.command).toContain("deepseek-flash");
+      expect(result.command).not.toContain("deepseek-v4-flash-vision-exp");
+    } finally {
+      if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
+      else process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = prev.bin;
+      if (prev.ds === undefined) delete process.env.CURSOR_ROUTE_DS_MODEL;
+      else process.env.CURSOR_ROUTE_DS_MODEL = prev.ds;
+      if (prev.am === undefined) delete process.env.ANTHROPIC_MODEL;
+      else process.env.ANTHROPIC_MODEL = prev.am;
+      if (prev.jobs === undefined) delete process.env.CURSOR_ROUTE_JOBS_DIR;
+      else process.env.CURSOR_ROUTE_JOBS_DIR = prev.jobs;
+      rmSync(jobsDir, { recursive: true, force: true });
+    }
+  });
+
+  test("--model vision records alias vision and launches deepseek-flash", () => {
+    const prev = {
+      bin: process.env.CURSOR_ROUTE_CLAUDE_DS_BIN,
+      ds: process.env.CURSOR_ROUTE_DS_MODEL,
+      am: process.env.ANTHROPIC_MODEL,
+      jobs: process.env.CURSOR_ROUTE_JOBS_DIR,
+    };
+    const jobsDir = join(tmpdir(), `cr-jobs-vision-flag-${process.pid}`);
+    mkdirSync(jobsDir, { recursive: true });
+    process.env.CURSOR_ROUTE_CLAUDE_DS_BIN = "/tmp/fake-claude-ds";
+    delete process.env.CURSOR_ROUTE_DS_MODEL;
+    delete process.env.ANTHROPIC_MODEL;
+    process.env.CURSOR_ROUTE_JOBS_DIR = jobsDir;
+    try {
+      const result = startJob({
+        prompt: "ping",
+        lane: "mid",
+        model: "vision",
+        dryRun: true,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.job.model).toBe("vision");
+      expect(result.command).toContain("deepseek-flash");
       expect(result.command).not.toContain("deepseek-v4-flash-vision-exp");
     } finally {
       if (prev.bin === undefined) delete process.env.CURSOR_ROUTE_CLAUDE_DS_BIN;
@@ -605,15 +656,16 @@ describe("deepseek adapter (dsh)", () => {
         const patch = readFileSync(join(dir, "job.dsh-patch.yml"), "utf8");
         expect(patch).toContain("agent-default-model");
         expect(patch).toContain("provider: deepseek-official");
-        expect(patch).toContain("deepseek-v4-flash");
+        expect(patch).toContain("deepseek-flash");
         expect(patch).not.toContain("deepseek-v4-pro");
+        expect(patch).not.toContain("deepseek-v4-flash-vision-exp");
         expect(patch).not.toContain("test-key");
       },
     );
     rmSync(dir, { recursive: true, force: true });
   });
 
-  test("buildLaunch: vision model → deepseek-v4-flash-vision-exp in patch", () => {
+  test("buildLaunch: vision model → deepseek-flash in patch", () => {
     const { dir, bin } = makeFakeDsh("vision");
     const promptFile = join(dir, "job.prompt");
     writeFileSync(promptFile, "ping");
@@ -632,13 +684,15 @@ describe("deepseek adapter (dsh)", () => {
           model: "vision",
         });
         const patch = readFileSync(join(dir, "job.dsh-patch.yml"), "utf8");
-        expect(patch).toContain("deepseek-v4-flash-vision-exp");
+        expect(patch).toContain("deepseek-flash");
+        expect(patch).not.toContain("deepseek-v4-flash-vision-exp");
+        expect(patch).not.toContain("deepseek-v4-pro");
       },
     );
     rmSync(dir, { recursive: true, force: true });
   });
 
-  test("buildLaunch: pro model → deepseek-v4-pro in patch", () => {
+  test("buildLaunch: pro model → deepseek-flash in patch", () => {
     const { dir, bin } = makeFakeDsh("pro");
     const promptFile = join(dir, "job.prompt");
     writeFileSync(promptFile, "ping");
@@ -657,14 +711,15 @@ describe("deepseek adapter (dsh)", () => {
           model: "pro",
         });
         const patch = readFileSync(join(dir, "job.dsh-patch.yml"), "utf8");
-        expect(patch).toContain("deepseek-v4-pro");
-        expect(patch).not.toContain("deepseek-v4-flash");
+        expect(patch).toContain("deepseek-flash");
+        expect(patch).not.toContain("deepseek-v4-pro");
+        expect(patch).not.toContain("deepseek-v4-flash-vision-exp");
       },
     );
     rmSync(dir, { recursive: true, force: true });
   });
 
-  test("buildLaunch: preserves deepseek-v4-pro[1m] in patch via modelId", () => {
+  test("buildLaunch: legacy deepseek-v4-pro[1m] modelId maps to deepseek-flash in patch", () => {
     const { dir, bin } = makeFakeDsh("pro1m");
     const promptFile = join(dir, "job.prompt");
     writeFileSync(promptFile, "ping");
@@ -684,7 +739,8 @@ describe("deepseek adapter (dsh)", () => {
           modelId: "deepseek-v4-pro[1m]",
         });
         const patch = readFileSync(join(dir, "job.dsh-patch.yml"), "utf8");
-        expect(patch).toContain("deepseek-v4-pro[1m]");
+        expect(patch).toContain("deepseek-flash");
+        expect(patch).not.toContain("deepseek-v4-pro");
       },
     );
     rmSync(dir, { recursive: true, force: true });
@@ -879,7 +935,7 @@ describe("health", () => {
   test("returns structured report", () => {
     const r = runHealth();
     expect(r.product).toBe("cursor-route");
-    expect(r.version).toBe("0.1.14");
+    expect(r.version).toBe("0.1.15");
     expect(r.checks.length).toBeGreaterThan(3);
     expect(r.checks.some((c) => c.name === "tmux")).toBe(true);
     expect(r.checks.some((c) => c.name === "cursor_cli")).toBe(true);
@@ -891,8 +947,8 @@ describe("health", () => {
     expect(r.checks.some((c) => c.name === "worker:deepseek")).toBe(true);
   });
 
-  test("config version is 0.1.14", () => {
-    expect(config.version).toBe("0.1.14");
+  test("config version is 0.1.15", () => {
+    expect(config.version).toBe("0.1.15");
   });
 
   test("OR-gate: ok can be true while worker:opencode is false", () => {

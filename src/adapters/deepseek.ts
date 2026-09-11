@@ -43,8 +43,14 @@ function pickModel(
   modelId?: string,
 ): { alias: DsModelAlias; id: string } {
   if (modelId) {
-    const alias = requested ?? resolveDsModel(modelId).alias;
-    return { alias, id: modelId };
+    try {
+      const resolved = resolveDsModel(modelId);
+      return { alias: requested ?? resolved.alias, id: resolved.id };
+    } catch (e) {
+      // Unknown id with an explicit alias: keep the raw id so YAML checks can still reject it.
+      if (requested) return { alias: requested, id: modelId };
+      throw e;
+    }
   }
   if (requested) {
     return { alias: requested, id: DS_MODEL_IDS[requested] };

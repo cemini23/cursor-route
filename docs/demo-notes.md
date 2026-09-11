@@ -6,10 +6,10 @@ Simulated capture output for README / tweet assets — replace with a real GIF o
 
 ```
 $ cursor-route --version
-0.1.14
+0.1.15
 
 $ cursor-route health
-cursor-route v0.1.14
+cursor-route v0.1.15
 health: OK
   ✓ tmux
   ✓ runtime          bun ok
@@ -32,7 +32,7 @@ $ cursor-route jobs --json
 
 Verified locally (2026-08-10): headless `claude-ds` smoke returned `CURSOR_ROUTE_SMOKE_OK`.
 Grok smoke hit 402 (Build usage balance exhausted) — auth/PATH wiring works; top up Grok Build for live demos.
-Use `--model flash` when Grok **usage** is out (cheap default). `--model pro` is harder mid / hard backup only — not the default Grok-out stand-in. A missing `grok login` is auth, not the Pro case.
+Use `--model flash` when Grok **usage** is out (cheap default). `--model pro` and `--model vision` are legacy aliases to `deepseek-flash`. A missing `grok login` is auth, not a model switch.
 
 Current commands: `health`, `start`, `jobs`, `status`, `capture`, `send`, `attach`, `kill`, `sessions`, `clean`.
 Headless demos (no tmux) use `--no-tmux` and `capture`/`status` instead of `attach`/`send`.
