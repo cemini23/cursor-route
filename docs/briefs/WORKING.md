@@ -1,7 +1,7 @@
 ---
 title: cursor-route workspace — working brief (edit in place)
 repo: ~/Projects/cursor-route
-npm: cursor-route@0.1.16
+npm: cursor-route@0.1.16 staged (approve on npmjs.com)
 created: 2026-08-12
 updated: 2026-09-16
 ---
@@ -25,7 +25,7 @@ Cursor Agent plans. Workers run in tmux via `cursor-route`:
 
 Always-approve on for coding worktrees (`--ask` / `CURSOR_ROUTE_ASK=1` to opt out) — not LIVE Discord/trading. Jobs live in `~/.local/share/cursor-route/jobs`, not in this clone.
 
-Install: `npm i -g cursor-route` → **0.1.16** (parent publishes). Release notes: [CHANGELOG.md](../../CHANGELOG.md).
+Install: `npm i -g cursor-route` → **0.1.16** after npm stage approve. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
 
 ## Open (edit / check off)
 
@@ -87,4 +87,4 @@ Install: `npm i -g cursor-route` → **0.1.16** (parent publishes). Release note
 | 2026-09-02 | Kimi audit follow-up → ranker tests (seven tiers, score/id ties, 131072 cap, cache round-trip) then **0.1.14 LIVE** on npm. |
 | 2026-09-11 | Map mid models to `deepseek-flash` (V4.1 Flash, native vision). `--model pro` / `--model vision` are legacy aliases. Pro is off rotation. Mid still `claude-ds` → **0.1.15 LIVE** on npm. |
 | 2026-09-16 | Pickup brief: `docs/briefs/2026-09-16_zen-strongest-free.md`. Port private `/route` Zen capability-token ranker so `--model free` picks strongest listed-free coding model. Target npm `0.1.16`. Open checkbox added. |
-| 2026-09-16 | Ship Zen strongest-free ranker → **0.1.16** (commit + tag; parent publishes npm). Ox Alpha is offline fallback only, not a live pin. Mid still `claude-ds`. |
+| 2026-09-16 | Ship Zen strongest-free ranker → **0.1.16** (commit + tag; npm staged, waiting 2FA approve). Ox Alpha is offline fallback only, not a live pin. Mid still `claude-ds`. |
