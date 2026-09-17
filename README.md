@@ -29,7 +29,7 @@ If you already live in Cursor, X Premium (Grok CLI), and DeepSeek — stop payin
 | Grok CLI | X Premium | `--lane hard` implement |
 | DeepSeek via claude-ds | DeepSeek API / plan | `--lane mid` implement (**Flash** default; `--model vision` for screenshots; `--model pro` harder mid / hard backup only) |
 | OpenRouter free models | OpenRouter API (free tier) | `--lane easy` live free pick at start — non-secret prompts only (see Security) |
-| OpenCode (opt-in) | OpenCode Zen free models | `--worker opencode` implement on live Zen free pick (Ox Alpha while listed) |
+| OpenCode (opt-in) | OpenCode Zen free models | `--worker opencode` implement on live Zen free pick (strongest listed-free; no locked id) |
 | Codex / extra Claude | Optional | Not required for v0 |
 
 Exact dollars vary — the point is **reuse subscriptions you already have**.
@@ -116,10 +116,10 @@ docs/fixtures/generate-hero-demo.sh      # regenerate docs/fixtures/hero-demo.lo
 
 ```text
 $ cursor-route --version
-0.1.15
+0.1.16
 
 $ CURSOR_ROUTE_RELAXED=1 cursor-route health
-cursor-route v0.1.15
+cursor-route v0.1.16
 health: OK
 
 $ cursor-route start --lane mid --model flash --dry-run "Add a unit test for shellQuote"
@@ -243,9 +243,10 @@ key-shaped material in `start` / `send`, and the runner re-checks the prompt fil
 ## OpenCode setup (opt-in free coding worker)
 
 `--worker opencode` runs [OpenCode](https://opencode.ai) as a **coding agent** on
-live OpenCode Zen free models (`--model free` fetches the catalog and ranks,
-same idea as the OpenRouter free picker). Ox Alpha (`opencode/x-preview-f-free`)
-wins while it is listed and free. This is **not** a lane default — mid stays
+live OpenCode Zen free models (`--model free` fetches the catalog and ranks the
+strongest listed-free coding model, same idea as the OpenRouter free picker).
+There is no locked live id. Offline / empty-catalog fallback is
+`opencode/x-preview-f-free`. This is **not** a lane default — mid stays
 `claude-ds`; easy stays OpenRouter chat (no tools). Use it to burn fewer Grok /
 DeepSeek tokens on implement work.
 
@@ -271,7 +272,7 @@ for ~15 minutes (`CURSOR_ROUTE_ZEN_CACHE_MINUTES`).
 **Non-secret prompts:** several Zen free models may log or train on prompts during
 their free period (see [OpenCode Zen](https://opencode.ai/docs/zen/) privacy notes).
 The same refuse gate as every lane still applies. `opencode/x-preview-f-free`
-(Ox Alpha) is the zero-retention free option if you need it.
+(Ox Alpha) is the zero-retention **fallback** option if you need it.
 
 ## Jobs directory
 

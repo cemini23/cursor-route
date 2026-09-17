@@ -11,7 +11,7 @@ import {
 } from "../config.ts";
 
 describe("openCodeModel", () => {
-  test("defaults to live Zen pick (Ox Alpha fallback when offline)", () => {
+  test("defaults to live Zen pick (fallback id when offline)", () => {
     const prev = {
       model: process.env.CURSOR_ROUTE_OPENCODE_MODEL,
       offline: process.env.CURSOR_ROUTE_ZEN_OFFLINE,

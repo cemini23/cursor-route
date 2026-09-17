@@ -4,6 +4,12 @@
 
 _(none)_
 
+## 0.1.16 — 2026-09-16
+
+- `--worker opencode --model free` now ranks the **strongest listed-free coding model** by capability tokens (ultra/pro/max > preview > generic > flash/lite), then coding-family, then `context_length`. No locked live winner id.
+- Ox Alpha (`opencode/x-preview-f-free`) is the offline / fetch-fail / empty-catalog **fallback only**, not a live pin. Pin `CURSOR_ROUTE_OPENCODE_MODEL` to freeze an id.
+- `hy3-free` is may-train (−20), not a coding-family boost. Contributor-free is penalized. Mid lane still `claude-ds`; no worker swap. Hero demo fixture regenerated to **0.1.16**.
+
 ## 0.1.15 — 2026-09-11
 
 - Mid default is `deepseek-flash` (DeepSeek V4.1 Flash, native vision). `--model pro` and `--model vision` are legacy aliases to the same id. Pro is off rotation.

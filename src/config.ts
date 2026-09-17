@@ -123,7 +123,7 @@ function maxConcurrentJobsFromEnv(): number {
  */
 export const config = {
   product: "cursor-route",
-  version: "0.1.15",
+  version: "0.1.16",
   get jobsDir(): string {
     return defaultJobsDir();
   },

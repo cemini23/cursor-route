@@ -6,9 +6,9 @@ import { openCodeModel, OPENCODE_DEFAULT_MODEL, cachedZenFreePick } from "../con
 
 /**
  * Opt-in OpenCode worker (`opencode run`) — a coding agent on live OpenCode
- * Zen free models (`--model free` ranks the catalog; Ox Alpha wins while
- * listed). Not a lane default: mid stays claude-ds; easy stays OpenRouter
- * chat (no tools).
+ * Zen free models (`--model free` ranks the strongest listed-free coding
+ * model). Not a lane default: mid stays claude-ds; easy stays OpenRouter
+ * chat (no tools). Pin `CURSOR_ROUTE_OPENCODE_MODEL` to freeze an id.
  *
  * We never rewrite ~/.config/opencode/opencode.json (parallel jobs would
  * race). Always-approve maps to `opencode run --auto` (still honors explicit
@@ -47,7 +47,7 @@ export const opencodeAdapter: Adapter = {
           "opencode not found — install: npm i -g opencode-ai (or brew install opencode). Then: opencode auth login. Mid default remains claude-ds.",
       };
     }
-    // Health stays offline: show a fresh cache hit, else the Ox Alpha fallback.
+    // Health stays offline: show a fresh cache hit, else the fallback id.
     const pick = cachedZenFreePick() || OPENCODE_DEFAULT_MODEL;
     return {
       worker: "opencode",

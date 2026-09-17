@@ -14,7 +14,7 @@ import { join } from "node:path";
 
 export const ZEN_MODELS_URL_DEFAULT = "https://opencode.ai/zen/v1/models";
 
-/** Offline / fetch-fail fallback — Ox Alpha (zero-retention, currently top-tier free). */
+/** Offline / fetch-fail fallback only — not a live pin. */
 export const OPENCODE_DEFAULT_MODEL = "opencode/x-preview-f-free";
 
 export interface ZenModel {
@@ -36,10 +36,14 @@ export interface ZenFreePick {
 
 const EXCLUDE_RE =
   /lyria|whisper|tts|embed|embedding|image|vision-only|audio|diffusion|flux|stable-diffusion|moderation/i;
-const CODING_RE =
-  /coder|instruct|chat|laguna|nemotron|glm|qwen|kimi|deepseek|mimo|hy3|gpt-oss|north|gemma/i;
-const OX_ALPHA_RE = /x-preview|ox-alpha|oxalpha/i;
-const CONTRIBUTOR_RE = /contributor-free/i;
+const POWER_ULTRA_RE =
+  /ultra|(^|[-/])opus($|[-/])|(^|[-/_])pro($|[-/])|(^|[-/])max($|[-/])|plus|(^|[-/])large($|[-/])/;
+const POWER_PREVIEW_RE = /x-preview|ox-alpha|oxalpha|(^|[-/])alpha($|[-/])|preview/;
+const POWER_FLASH_RE = /flash|lightning|lite|mini|nano|small|haiku|fin-/;
+const CODING_FAMILY_RE =
+  /coder|code|instruct|laguna|glm|qwen|kimi|deepseek|gpt-oss|north|gemma|nemotron|mimo|muse/;
+const CONTRIBUTOR_RE = /contributor-free/;
+const MAY_TRAIN_RE = /(^|\/)big-pickle$|(^|\/)hy3-free$/;
 
 function zenModelsUrl(): string {
   return (process.env.CURSOR_ROUTE_ZEN_MODELS_URL || ZEN_MODELS_URL_DEFAULT).trim();
@@ -94,15 +98,28 @@ export function isZenFreeModel(m: ZenModel): boolean {
   return tagged || pricedFree;
 }
 
-/** Higher boost wins. Ox Alpha first while it is in the free catalog. */
+/**
+ * Higher boost wins. Generic capability tokens only — never a locked model id.
+ * Coding-family matches the model slug so the provider `opencode/` does not
+ * trip `code`.
+ */
 export function zenFreeBoost(id: string): number {
   const s = id.toLowerCase();
-  if (OX_ALPHA_RE.test(s)) return 40;
-  if (CONTRIBUTOR_RE.test(s)) return 1;
-  if (CODING_RE.test(s)) return 20;
-  if (s.endsWith("-free") || s.endsWith(":free")) return 10;
-  if (/(^|\/)big-pickle$/.test(s)) return 5;
-  return 0;
+  const slug = s.includes("/") ? s.slice(s.lastIndexOf("/") + 1) : s;
+  let score = 0;
+
+  if (POWER_ULTRA_RE.test(s)) score += 50;
+  else if (POWER_PREVIEW_RE.test(s)) score += 42;
+  else if (POWER_FLASH_RE.test(s)) score += 15;
+  else score += 30;
+
+  if (CODING_FAMILY_RE.test(slug)) score += 20;
+  else if (s.endsWith("-free") || s.endsWith(":free")) score += 10;
+
+  if (CONTRIBUTOR_RE.test(s)) score -= 25;
+  if (MAY_TRAIN_RE.test(s)) score -= 20;
+
+  return score;
 }
 
 export function rankZenFreeModels(models: ZenModel[]): Array<{

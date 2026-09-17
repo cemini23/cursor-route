@@ -38,30 +38,91 @@ describe("zen free catalog", () => {
     ).toBe(true);
   });
 
-  test("Ox Alpha outranks coding free, which outranks big-pickle and contributor", () => {
-    expect(zenFreeBoost("opencode/x-preview-f-free")).toBe(40);
-    expect(zenFreeBoost("opencode/laguna-s-2.1-free")).toBe(20);
+  test("capability tokens: ultra > preview > generic coding > flash > may-train", () => {
+    expect(zenFreeBoost("opencode/nemotron-3-ultra-free")).toBe(70);
+    expect(zenFreeBoost("opencode/x-preview-f-free")).toBe(52);
+    expect(zenFreeBoost("opencode/laguna-s-2.1-free")).toBe(50);
+    expect(zenFreeBoost("opencode/deepseek-v4-flash-free")).toBe(35);
+    expect(zenFreeBoost("opencode/muse-spark-1.2-contributor-free")).toBe(25);
     expect(zenFreeBoost("opencode/hy3-free")).toBe(20);
-    expect(zenFreeBoost("opencode/big-pickle")).toBe(5);
-    expect(zenFreeBoost("opencode/muse-spark-1.2-contributor-free")).toBe(1);
+    expect(zenFreeBoost("opencode/big-pickle")).toBe(10);
   });
 
-  test("rank: Ox Alpha first while listed; paid/whisper dropped", () => {
+  test("relative boosts: ultra > preview > flash > big-pickle", () => {
+    expect(zenFreeBoost("opencode/nemotron-3-ultra-free")).toBeGreaterThan(
+      zenFreeBoost("opencode/x-preview-f-free"),
+    );
+    expect(zenFreeBoost("opencode/x-preview-f-free")).toBeGreaterThan(
+      zenFreeBoost("opencode/deepseek-v4-flash-free"),
+    );
+    expect(zenFreeBoost("opencode/deepseek-v4-flash-free")).toBeGreaterThan(
+      zenFreeBoost("opencode/big-pickle"),
+    );
+  });
+
+  test("hy3-free is may-train, not coding-family", () => {
+    // else 30 + -free 10 − 20 may-train = 20. Coding-family would be 30.
+    expect(zenFreeBoost("opencode/hy3-free")).toBe(20);
+    expect(zenFreeBoost("opencode/hy3-free")).toBeLessThan(
+      zenFreeBoost("opencode/laguna-s-2.1-free"),
+    );
+  });
+
+  test("rank: paid/whisper dropped; preview may beat laguna (52 > 50)", () => {
     const ranked = rankZenFreeModels(CATALOG);
     expect(ranked[0]?.id).toBe("opencode/x-preview-f-free");
     expect(ranked.map((r) => r.id)).not.toContain("opencode/claude-opus-4-6");
     expect(ranked.map((r) => r.id)).not.toContain("opencode/whisper-free");
-    expect(ranked.at(-1)?.id).toBe("opencode/muse-spark-1.2-contributor-free");
+    expect(ranked.at(-1)?.id).toBe("opencode/big-pickle");
   });
 
-  test("rank without Ox: coding free beats big-pickle", () => {
+  test("rank without preview: coding free beats big-pickle", () => {
     const ranked = rankZenFreeModels([
       { id: "big-pickle" },
       { id: "laguna-s-2.1-free" },
       { id: "muse-spark-1.2-contributor-free" },
     ]);
     expect(ranked[0]?.id).toBe("opencode/laguna-s-2.1-free");
-    expect(ranked[1]?.id).toBe("opencode/big-pickle");
+    expect(ranked[1]?.id).toBe("opencode/muse-spark-1.2-contributor-free");
+    expect(ranked[2]?.id).toBe("opencode/big-pickle");
+  });
+
+  test("hy3 + preview + big-pickle → preview", () => {
+    expect(
+      pickZenFreeModel({
+        catalog: [{ id: "hy3-free" }, { id: "x-preview-f-free" }, { id: "big-pickle" }],
+      }),
+    ).toBe("opencode/x-preview-f-free");
+  });
+
+  test("hy3 + big-pickle + flash → flash coding", () => {
+    expect(
+      pickZenFreeModel({
+        catalog: [
+          { id: "hy3-free" },
+          { id: "big-pickle" },
+          { id: "deepseek-v4-flash-free" },
+        ],
+      }),
+    ).toBe("opencode/deepseek-v4-flash-free");
+  });
+
+  test("flash + ultra + preview → ultra", () => {
+    expect(
+      pickZenFreeModel({
+        catalog: [
+          { id: "deepseek-v4-flash-free" },
+          { id: "nemotron-3-ultra-free" },
+          { id: "x-preview-f-free" },
+        ],
+      }),
+    ).toBe("opencode/nemotron-3-ultra-free");
+  });
+
+  test("only big-pickle → big-pickle", () => {
+    expect(pickZenFreeModel({ catalog: [{ id: "big-pickle" }] })).toBe(
+      "opencode/big-pickle",
+    );
   });
 
   test("asOpenCodeZenId prefixes bare Zen ids", () => {
@@ -73,8 +134,11 @@ describe("zen free catalog", () => {
     expect(pickZenFreeModel({ catalog: CATALOG })).toBe("opencode/x-preview-f-free");
   });
 
-  test("offline / empty catalog falls back to Ox Alpha", () => {
+  test("offline / empty / paid-only catalog falls back to Ox Alpha", () => {
     expect(pickZenFreeModel({ catalog: [] })).toBe(OPENCODE_DEFAULT_MODEL);
+    expect(pickZenFreeModel({ catalog: [{ id: "claude-opus-4-6" }] })).toBe(
+      OPENCODE_DEFAULT_MODEL,
+    );
     expect(OPENCODE_DEFAULT_MODEL).toBe("opencode/x-preview-f-free");
   });
 });
@@ -119,10 +183,16 @@ describe("openCodeModel live pick", () => {
     });
   });
 
-  test("free + injected catalog → Ox Alpha", () => {
+  test("free + injected catalog → strongest listed-free (ultra)", () => {
     isolate(() => {
-      process.env.CURSOR_ROUTE_ZEN_CATALOG_JSON = JSON.stringify({ data: CATALOG });
-      expect(openCodeModel("free")).toBe("opencode/x-preview-f-free");
+      process.env.CURSOR_ROUTE_ZEN_CATALOG_JSON = JSON.stringify({
+        data: [
+          { id: "deepseek-v4-flash-free" },
+          { id: "nemotron-3-ultra-free" },
+          { id: "x-preview-f-free" },
+        ],
+      });
+      expect(openCodeModel("free")).toBe("opencode/nemotron-3-ultra-free");
     });
   });
 

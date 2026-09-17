@@ -935,7 +935,7 @@ describe("health", () => {
   test("returns structured report", () => {
     const r = runHealth();
     expect(r.product).toBe("cursor-route");
-    expect(r.version).toBe("0.1.15");
+    expect(r.version).toBe("0.1.16");
     expect(r.checks.length).toBeGreaterThan(3);
     expect(r.checks.some((c) => c.name === "tmux")).toBe(true);
     expect(r.checks.some((c) => c.name === "cursor_cli")).toBe(true);
@@ -947,8 +947,8 @@ describe("health", () => {
     expect(r.checks.some((c) => c.name === "worker:deepseek")).toBe(true);
   });
 
-  test("config version is 0.1.15", () => {
-    expect(config.version).toBe("0.1.15");
+  test("config version is 0.1.16", () => {
+    expect(config.version).toBe("0.1.16");
   });
 
   test("OR-gate: ok can be true while worker:opencode is false", () => {

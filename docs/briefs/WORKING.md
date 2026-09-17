@@ -1,9 +1,9 @@
 ---
 title: cursor-route workspace — working brief (edit in place)
 repo: ~/Projects/cursor-route
-npm: cursor-route@0.1.15 LIVE
+npm: cursor-route@0.1.16
 created: 2026-08-12
-updated: 2026-09-11
+updated: 2026-09-16
 ---
 
 # cursor-route — living brief
@@ -21,11 +21,11 @@ Cursor Agent plans. Workers run in tmux via `cursor-route`:
 | `easy` | OpenRouter free (live pick) | Wording / drafts — non-secret prompts only |
 | `mid` | claude-ds (DeepSeek behind Claude Code) | Default implement (**Flash** `deepseek-flash`; `--model vision` / `--model pro` are legacy aliases to the same id) |
 | `hard` | Grok CLI | Hard implement |
-| opt-in | OpenCode | `--worker opencode` coding agent; `--model free` ranks live Zen catalog (Ox Alpha first while listed) |
+| opt-in | OpenCode | `--worker opencode` coding agent; `--model free` ranks strongest listed-free Zen coding model (no locked id; offline fallback `opencode/x-preview-f-free`) |
 
 Always-approve on for coding worktrees (`--ask` / `CURSOR_ROUTE_ASK=1` to opt out) — not LIVE Discord/trading. Jobs live in `~/.local/share/cursor-route/jobs`, not in this clone.
 
-Install: `npm i -g cursor-route` → **0.1.15**. Release notes: [CHANGELOG.md](../../CHANGELOG.md).
+Install: `npm i -g cursor-route` → **0.1.16** (parent publishes). Release notes: [CHANGELOG.md](../../CHANGELOG.md).
 
 ## Open (edit / check off)
 
@@ -46,6 +46,7 @@ Install: `npm i -g cursor-route` → **0.1.15**. Release notes: [CHANGELOG.md](.
 - [x] **Super-audit OR ranker parity (0.1.14)** — tier-rank Qwen/GLM/Kimi above Nemotron 550B in `or-free.ts` (match agent-toolkit `select-openrouter-free-model.ps1`); brief `docs/briefs/2026-09-02_super-audit-or-ranker-parity.md`
 - [x] **V4.1 Flash wire (0.1.15)** — mid default `deepseek-flash` (native vision). `--model pro` / `--model vision` are legacy aliases to the same id. Pro is off rotation. Mid still `claude-ds`. Hero fixture regenerated. Brief `docs/briefs/2026-09-11_v41-flash-not-pro.md`
 - [ ] **Hero GIF** — still outstanding; dry-run fixture ships as the substitute for now (`docs/fixtures/hero-demo.log` — see `docs/DEMO_GIF.md`)
+- [x] **Zen strongest-free ranker (0.1.16)** — `zenFreeBoost` ports capability tokens (ultra/pro/max > preview > generic > flash/lite), then coding-family, then `context_length`. No locked live id. Ox Alpha is offline fallback only. SIP: `docs/briefs/2026-09-16_zen-strongest-free.md`. Mid still `claude-ds`.
 - [x] **Do not** paste private `ROUTE_KIT`, SIP, prod paths, or hang-watchdog env into this public repo
 
 ## Repo map
@@ -85,3 +86,5 @@ Install: `npm i -g cursor-route` → **0.1.15**. Release notes: [CHANGELOG.md](.
 | 2026-09-02 | Tier-rank OpenRouter free picks in `or-free.ts` (Qwen 100 / GLM-Kimi 95 / DeepSeek 90 / coding 70 / Nemotron 15 / default 40; ctx bonus capped at 131072) → 0.1.14. Commit + tag `v0.1.14`. Mid stays claude-ds. |
 | 2026-09-02 | Kimi audit follow-up → ranker tests (seven tiers, score/id ties, 131072 cap, cache round-trip) then **0.1.14 LIVE** on npm. |
 | 2026-09-11 | Map mid models to `deepseek-flash` (V4.1 Flash, native vision). `--model pro` / `--model vision` are legacy aliases. Pro is off rotation. Mid still `claude-ds` → **0.1.15 LIVE** on npm. |
+| 2026-09-16 | Pickup brief: `docs/briefs/2026-09-16_zen-strongest-free.md`. Port private `/route` Zen capability-token ranker so `--model free` picks strongest listed-free coding model. Target npm `0.1.16`. Open checkbox added. |
+| 2026-09-16 | Ship Zen strongest-free ranker → **0.1.16** (commit + tag; parent publishes npm). Ox Alpha is offline fallback only, not a live pin. Mid still `claude-ds`. |
