@@ -18,7 +18,7 @@ You are the **orchestrator**. Do **not** implement bulk code in this Cursor sess
 - Mid/hard implementation that should run on a subscription worker (Grok CLI / claude-ds) or opt-in OpenCode free models
 - Multi-file investigation that benefits from parallel panes
 
-**Do not steal federation `/route`.** Private Cemini `/route` (route-task → verify → Grok/claude-ds chain) is a different skill. This public skill only drives the `cursor-route` CLI.
+**Do not steal federation `/route`.** Private Cemini `/route` (route-task → verify → Grok/claude-ds chain) is a different skill. This public skill only drives the `cursor-route` CLI. Private **agent-toolkit** `/route` also enforces **step-gate** on federation skill writes — use `federation_skill_install.py` or an isolated Grok lane, not parent Cursor Write after route returns a draft.
 
 ## Lanes (public core)
 
@@ -95,6 +95,7 @@ cursor-route start --lane hard --dir "$PWD" "$(cat <<'EOF'
 - [ ] ...
 
 ## NEVER
+- Do not write federation skills from npm `cursor-route` alone — ship via CCC `federation_skill_install.py` or private `/route` Grok implement with sync in Verify
 - ...
 EOF
 )"
