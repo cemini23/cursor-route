@@ -306,7 +306,7 @@ The cursor-route code is open source under MIT. It does not make the worker serv
 
 - Changelog: [CHANGELOG.md](./CHANGELOG.md)
 - Newsletter: [Outlier Weekly](https://outlierweekly.substack.com)
-- YouTube: [@Cemini23](https://www.youtube.com/@Cemini23)
+- X: [@Cemini23](https://x.com/Cemini23)
 - Agent meta-wiki: [cemini-claude-code-CCC](https://github.com/cemini23/cemini-claude-code-CCC)
 - Products: [Atto](https://youratto.com) · [GuruWatcher](https://guruwatcher.com)
 - Agent toolkit: [vet](https://github.com/cemini23/vet) · [wikilint](https://github.com/cemini23/wikilint) · [phase0](https://github.com/cemini23/phase0) · [agent-toolkit-demo](https://github.com/cemini23/agent-toolkit-demo) · [ara-schema](https://github.com/cemini23/ara-schema) · [cursor-audit](https://github.com/cemini23/agent-toolkit-demo/tree/main/skills/cursor-audit) · [super-audit](https://github.com/cemini23/agent-toolkit-demo/tree/main/skills/super-audit)
@@ -325,7 +325,6 @@ If you’d like to tip, use the **donation-only** addresses below (not trading o
 | **Outlier Weekly** (methodology newsletter) | [outlierweekly.substack.com](https://outlierweekly.substack.com) |
 | **Atto** — organize Italian family documents on your computer | [youratto.com](https://youratto.com) |
 | **GuruWatcher** — Discord alerts for your newsletter’s price levels | [guruwatcher.com](https://guruwatcher.com) |
-| **YouTube** | [@Cemini23](https://www.youtube.com/@Cemini23) |
 
 | Chain family | Address |
 |--------------|---------|

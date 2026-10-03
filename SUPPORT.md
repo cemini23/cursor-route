@@ -17,7 +17,7 @@ If you’d rather follow along or try something we ship:
 - Newsletter — [Outlier Weekly](https://outlierweekly.substack.com) (Substack)
 - Genealogy kit — [youratto.com](https://youratto.com)
 - Newsletter parameter alerts — [guruwatcher.com](https://guruwatcher.com)
-- YouTube — [@Cemini23](https://www.youtube.com/@Cemini23)
+- X: [@Cemini23](https://x.com/Cemini23)
 - Agent meta-wiki — [cemini-claude-code-CCC](https://github.com/cemini23/cemini-claude-code-CCC)
 - This CLI — [cursor-route](https://github.com/cemini23/cursor-route)
 
